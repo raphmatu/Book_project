@@ -17,9 +17,9 @@ from keras.optimizers import Adam
 from keras.layers import Activation
 from keras.layers.core import Dense, Flatten
 from keras.layers.convolutional import Conv2D
-from keras.models import Sequential, Model, load_model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers.normalization import BatchNormalization
+from keras.models import Sequential, Model, load_model, model_from_json
 from keras_applications.inception_v3 import InceptionV3, preprocess_input
 
 ######################### Definition des fonctions utilisées dans le script #########################
@@ -128,8 +128,18 @@ new_inception.fit_generator(train_batches, validation_data=test_batches, epochs=
 
 
 ## sauvegarde ou chargement du modèle
-new_inception.save('inception_model_-222retrain_10epochs')
-#new_inception = load_model('inception_model_30_outputs_-5False.h5')
+new_inception.save_weights('model.h5')
+model_json = new_inception.to_json()
+with open('inception_simple.json', "w") as json_file:
+    json_file.write(model_json)
+json_file.close()
+
+
+json_file = open("inception_simple_13epochs.json", 'r')
+loaded_model_json = json_file.read()
+json_file.close()
+new_inception = model_from_json(loaded_model_json)
+new_inception.load_weights("model.h5")
 
 
 ## Prédiction et affichage de la matrice de Confusion
