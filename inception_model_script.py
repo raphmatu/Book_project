@@ -7,18 +7,22 @@ import keras
 import itertools
 import numpy as np
 import pandas as pd
+from sklearn.svm import SVC
 import matplotlib.pylab as plt
+import tensorflow.python.platform
 from sklearn.metrics import confusion_matrix
+from tensorflow.python.platform import gfile
 
 %matplotlib inline
 
 from keras import callbacks
-from keras.optimizers import Adam
-from keras.layers import Activation
-from keras.layers.core import Dense, Flatten
+from keras.optimizers import Adam ,SGD
 from keras.layers.convolutional import Conv2D
+from keras.layers.core import Dense, Flatten, Dropout
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers.normalization import BatchNormalization
+from keras.layers.convolutional import Conv2D, MaxPooling2D
+from keras.layers import Activation, GlobalAveragePooling2D
 from keras.models import Sequential, Model, load_model, model_from_json
 from keras_applications.inception_v3 import InceptionV3, preprocess_input
 
@@ -151,6 +155,73 @@ predictions = new_inception.predict_generator(test_batches, verbose =1)
 test_labels = test_batches.classes
 cm = confusion_matrix(test_labels, predictions.argmax(axis=1))
 plot_confusion_matrix(cm, classe)
+
+
+############# extraction des 2048 features du globalPool d'inception ###############
+
+
+df_path_cat_test = pd.DataFrame({'path': df_test.path, 'Category': df_test.Category})
+list_images_test = df_path_cat_test.path
+labels_test = df_path_cat_test.Category
+
+df_path_cat_train = pd.DataFrame({'path': df_train.path, 'Category': df_train.Category})
+list_images_train = df_path_cat_train.path
+labels_train = df_path_cat_train.Category
+
+model_dir = 'C:\\Users\\Raphaël\\Jupyter\\model_dir'
+
+## Je charge le graph du modèle inception
+def create_graph():
+    with gfile.FastGFile(os.path.join(model_dir, 'my_model.pb'), 'rb') as f:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+        _ = tf.import_graph_def(graph_def, name='')
+
+
+def extract_features(list_images):
+    nb_features = 2048
+    features = np.empty((len(list_images),nb_features))
+
+    create_graph()
+
+    with tf.Session() as sess:
+
+        next_to_last_tensor = sess.graph.get_tensor_by_name('pool_3:0')
+
+        for ind, image in enumerate(list_images):
+            if (ind%100 == 0):
+                print('Processing %s...' % (image))
+            if not gfile.Exists(image):
+                tf.logging.fatal('File does not exist %s', image)
+
+        image_data = gfile.FastGFile(image, 'rb').read()
+        predictions = sess.run(next_to_last_tensor,{'DecodeJpeg/contents:0': image_data})
+        features[ind,:] = np.squeeze(predictions)
+
+    return features
+
+
+features_test = extract_features(list_images_test)
+features_train = extract_features(list_images_train)
+
+## utilisation d'une SVM pour séparer les catégories
+
+clf = SVC()
+parametres = { 'C' : [0.1,1,10], 'kernel': ['rbf', 'linear','poly'], 'gamma' : [0.001, 0.1, 0.5]}
+grid_clf = model_selection.GridSearchCV(clf, param_grid = parametres)
+
+grid_clf.fit(features_train, labels_train)
+pred = grid_clf.predict(features_test)
+
+cm = confusion_matrix(labels_test, pred)
+plot_confusion_matrix(cm, classe)
+
+
+
+
+########## Analyse des resultats #############
+
+
 
 
 ## Récupération des top1, top3 et top5 accuracy
