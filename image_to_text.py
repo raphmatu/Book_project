@@ -36,18 +36,23 @@ train_data["path"]=filepath
 
 ############################################################################
 
+############################################################################
 # Create a list of strings 
 def generate_text_from_image(images):
     tensor=list()
     
 # images = list of all images filepath ex: test_data.path
-# size = int, wanted picture size 
     
     for i in range(len(images)):
 # Image reading       
         image=cv2.imread(images[i])
-# Image transformation in grayscale      
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# We check if the image is NoneType before doing any action on it
+        if image is not None:
+# Image transformation in grayscale
+            if (len(image.shape)!=2):
+                gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else :
+                gray_image = image
 # Extracting the words from the image
         result = pytesseract.image_to_string(gray_image)
 # Adding the string result to the list
@@ -62,7 +67,7 @@ def generate_text_from_image(images):
 # Generating Train/Test datasets 
 # X_test and X_train are data frames with a single column containing the strings from the images
 
-
+# It takes a lot of time to have the X_test and X_train dataframes
 X_test=pd.DataFrame({'Texte sur l\'image':generate_text_from_image(test_data.path)})
 X_train=pd.DataFrame({'Texte sur l\'image':generate_text_from_image(train_data.path)})
 y_test=np_utils.to_categorical(test_data.CATEGORY_ID)
