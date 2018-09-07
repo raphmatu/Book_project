@@ -115,16 +115,19 @@ plot(imgs, titles=labels)
 ## construction du CNN
 inception.summary()
 
-x = inception.layers[311].output #récupération des 311 couches sur 312
-last_layer = Dense(30, activation='softmax')(x)
-new_inception = Model(inputs=inception.input, outputs=last_layer) # nouveau modèle avec l'output modifié
+x = inception.layers[-2].output #récupération des 311 couches sur 312 #310
+
+x = Dense(1024, activation='sigmoid')(x)
+x = Dropout(0.5)(x)
+x = Dense(30, activation='softmax')(x)
+new_inception = Model(inputs=inception.input, outputs=x) # nouveau modèle avec l'output modifié
+
+for layer in new_inception.layers[:-100]:# choix du nombre de couche à ré-entrainer
+        layer.trainable=False
 new_inception.summary()
 
-for layer in new_inception.layers[:-222]:# choix du nombre de couche à ré-entrainer
-        layer.trainable=False
-
 ## entrainement du CNN avec des callbacks en cas d'overfitting
-early_stop = callbacks.EarlyStopping(monitor='val_loss', patience =3, verbose = 1)
+early_stop = callbacks.EarlyStopping(monitor='val_loss', patience =5, verbose = 1)
 callbacks_list = [early_stop]
 
 new_inception.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics = ['accuracy'])
@@ -134,12 +137,12 @@ new_inception.fit_generator(train_batches, validation_data=test_batches, epochs=
 ## sauvegarde ou chargement du modèle
 new_inception.save_weights('model.h5')
 model_json = new_inception.to_json()
-with open('inception_simple.json', "w") as json_file:
+with open('model', "w") as json_file:
     json_file.write(model_json)
 json_file.close()
 
 
-json_file = open("inception_simple_13epochs.json", 'r')
+json_file = open("model.json", 'r')
 loaded_model_json = json_file.read()
 json_file.close()
 new_inception = model_from_json(loaded_model_json)
@@ -168,36 +171,18 @@ df_path_cat_train = pd.DataFrame({'path': df_train.path, 'Category': df_train.Ca
 list_images_train = df_path_cat_train.path
 labels_train = df_path_cat_train.Category
 
-model_dir = 'C:\\Users\\Raphaël\\Jupyter\\model_dir'
-
-## Je charge le graph du modèle inception
-def create_graph():
-    with gfile.FastGFile(os.path.join(model_dir, 'my_model.pb'), 'rb') as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-        _ = tf.import_graph_def(graph_def, name='')
-
-
-def extract_features(list_images):
+def extract_features_keras(list_images):
     nb_features = 2048
     features = np.empty((len(list_images),nb_features))
+    model = Model(inputs=new_inception.input, outputs=new_inception.get_layer('avg_pool').output)
 
-    create_graph()
-
-    with tf.Session() as sess:
-
-        next_to_last_tensor = sess.graph.get_tensor_by_name('pool_3:0')
-
-        for ind, image in enumerate(list_images):
-            if (ind%100 == 0):
-                print('Processing %s...' % (image))
-            if not gfile.Exists(image):
-                tf.logging.fatal('File does not exist %s', image)
-
-        image_data = gfile.FastGFile(image, 'rb').read()
-        predictions = sess.run(next_to_last_tensor,{'DecodeJpeg/contents:0': image_data})
-        features[ind,:] = np.squeeze(predictions)
-
+    for i, image_path in enumerate(list_images):
+        img = image.load_img(image_path, target_size=(299, 299))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        predictions = model.predict(x)
+        features[i,:]=np.squeeze(predictions)
     return features
 
 
