@@ -127,5 +127,14 @@ clf_NB=MultinomialNB(alpha=1.7).fit(Xtrain,ytrain)
 NB_pred=clf_NB.predict(Xtest)
 print(classification_report(NB_pred,ytest))
 
+############# Sauvegarde du modèle ############################"
 
+from sklearn.externals import joblib
+joblib.dump(clf_NB,work_dir+"clf_NB_trained")
+
+########### Chargement du modèle pr-entrainé #################
+
+loaded_clf=joblib.load(work_dir+"clf_NB_trained")
+Loaded_pred=loaded_clf.predict(Xtest)
+print(classification_report(Loaded_pred,ytest))
 
