@@ -1,13 +1,25 @@
-########### On remplit X_train par le texte extrait des images d'entrainement
-########### On remplit X_test par le texte extrait des images test
-
-
-
 import pytesseract
+from PIL import Image
 import cv2
 import numpy as np
 import pandas as pd
 import os
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC
+from sklearn.model_selection import cross_val_score
+
+import seaborn as sns
+
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+
+#import the metrics class for the performance measurement
+from sklearn import metrics
 
 
 # Selecting working directory
@@ -62,17 +74,100 @@ def generate_text_from_image(images):
 
 
 ############################################################################
+#                         DATA EXTRACTION
+############################################################################
 
 
 # Generating Train/Test datasets 
 # X_test and X_train are data frames with a single column containing the strings from the images
 
 # It takes a lot of time to have the X_test and X_train dataframes
-X_test=pd.DataFrame({'Texte sur l\'image':generate_text_from_image(test_data.path)})
-X_train=pd.DataFrame({'Texte sur l\'image':generate_text_from_image(train_data.path)})
-y_test=np_utils.to_categorical(test_data.CATEGORY_ID)
-y_train=np_utils.to_categorical(train_data.CATEGORY_ID)
+X_test=pd.DataFrame({'Texte sur les images test':generate_text_from_image(test_data.path)})
+X_train=pd.DataFrame({'Texte sur les images train':generate_text_from_image(train_data.path)})
 
+y_test=test_data.CATEGORY_ID
+y_train=train_data.CATEGORY_ID
 
 
 ############################################################################
+#                         DATA PREPARATION
+############################################################################
+
+
+# We add y_train and y_test to the dataframes in order to drop NAs
+X_train["y_train"] = y_train
+X_test["y_test"] = y_test
+X_train = X_train.dropna()
+X_test = X_test.dropna()
+
+# then we refit y_train and y_test ...
+y_train = X_train.y_train
+y_test = X_test.y_test
+
+# ... and the train and test datasets
+X_train = X_train.drop('y_train',axis=1)
+X_test = X_test.drop('y_test',axis=1)
+
+# we split the characters of the datasets into a list of characters
+# in order to have each word apart
+X_test = X_test.applymap(lambda x: x.split())
+X_train = X_train.applymap(lambda x: x.split())
+
+# function which converts a list of text in text
+def TextList_to_Text(liste):
+    texte = ""
+    for element in liste:
+        texte = texte+" "+element
+    return texte
+
+X_test = X_test.applymap(lambda x: TextList_to_Text(x))
+X_train = X_train.applymap(lambda x: TextList_to_Text(x))
+# Conversion of the two datasets in order to apply CountVectorizer()
+# ( which can used only on text)
+
+# Transformation of the datsets in order to apply classification models
+count_vect = CountVectorizer()
+X_train_counts = count_vect.fit_transform(X_train["Texte sur les images train"])
+X_test_counts = count_vect.transform(X_test["Texte sur les images test"])
+tfidf_transformer = TfidfTransformer()
+X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+
+
+############################################################################
+#                         DATA MODELISATION
+############################################################################
+
+
+# We will test 4 different models ...
+models = [
+    RandomForestClassifier(n_estimators=200, max_depth=3, random_state=0),
+    LinearSVC(),
+    MultinomialNB(),
+    LogisticRegression(random_state=0),
+]
+
+# With cross validation
+CV = 5
+
+# Initialisation of a dataframe 
+cv_df = pd.DataFrame(index=range(CV * len(models)))
+
+entries = []
+# We fill a list with the model name with its accuracy
+for model in models:
+  model_name = model.__class__.__name__
+  accuracies = cross_val_score(model, X_train_tfidf, y_train, scoring='accuracy', cv=CV)
+  for fold_idx, accuracy in enumerate(accuracies):
+    entries.append((model_name, fold_idx, accuracy))
+
+# We fit the dataframe with the list filled before    
+cv_df = pd.DataFrame(entries, columns=['model_name', 'fold_idx', 'accuracy'])
+
+# Plot of the different models with their scores
+sns.boxplot(x='model_name', y='accuracy', data=cv_df)
+sns.stripplot(x='model_name', y='accuracy', data=cv_df, 
+              size=8, jitter=True, edgecolor="gray", linewidth=2)
+plt.show()
+
+# scores of the 4 models
+print(cv_df.groupby('model_name').accuracy.mean())
