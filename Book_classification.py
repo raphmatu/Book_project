@@ -21,10 +21,12 @@ from nltk.stem.snowball import EnglishStemmer
 ###nltk.download('stopwords')
 
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 from keras import callbacks
+from keras.preprocessing import image
 from keras.optimizers import Adam ,SGD
 from keras.layers.convolutional import Conv2D
 from keras.layers.core import Dense, Flatten, Dropout
@@ -179,9 +181,152 @@ def extract_features_keras(list_images):
         features[i,:]=np.squeeze(predictions)
     return features
 
+def new_inception_training(trainable_layers = -100, save_as = 'model'):
+
+    inception = keras.applications.inception_v3.InceptionV3(input_shape=(299,299,3), weights='imagenet')
+
+    train_batches = ImageDataGenerator(preprocessing_function=keras.applications.inception_v3.preprocess_input).flow_from_directory(
+        train_path, target_size=(299,299))
+    test_batches = ImageDataGenerator(preprocessing_function=keras.applications.inception_v3.preprocess_input).flow_from_directory(
+        test_path, target_size=(299,299), shuffle =False) # shuffle = False pour la matrice de confusion
+
+    ## construction du CNN
+    inception.summary()
+
+    x = inception.layers[-2].output #suppression de la dernière couche
+
+    x = Dense(1024, activation='sigmoid')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(30, activation='softmax')(x)
+    new_inception = Model(inputs=inception.input, outputs=x) # nouveau modèle avec l'output modifié, ainsi que le Dropout
+
+    for layer in new_inception.layers[:trainable_layers]:# choix du nombre de couche à ré-entrainer
+            layer.trainable=False
+    new_inception.summary()
+
+    ## entrainement du CNN avec des callbacks en cas d'overfitting
+    early_stop = callbacks.EarlyStopping(monitor='val_loss', patience =5, verbose = 1)
+    callbacks_list = [early_stop]
+
+    new_inception.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics = ['accuracy'])
+    new_inception.fit_generator(train_batches, validation_data=test_batches, epochs=10,verbose=1, callbacks=callbacks_list)
+
+    ## Prédiction et affichage de la matrice de Confusion
+    cat = pd.DataFrame(df_train['Category'].value_counts())
+    classe = list(cat.index.values)
+    classe.sort()# je récupère le nom de mes catégorie dans l'ordre
+
+    predictions = new_inception.predict_generator(test_batches, verbose =1)
+    test_labels = test_batches.classes
+    cm = confusion_matrix(test_labels, predictions.argmax(axis=1))
+    plot_confusion_matrix(cm, classe)
+    top_table(predictions)
+
+    ## sauvegarde ou chargement du modèle
+    new_inception.save_weights(model'.h5')
+    model_json = new_inception.to_json()
+    with open(model, "w") as json_file:
+        json_file.write(model_json)
+    json_file.close()
+
+    return new_inception
+
+def SVM_new_inception:
+
+    df_path_cat_test = pd.DataFrame({'path': df_test.Filepath, 'Category': df_test.Category})
+    list_images_test = df_path_cat_test.path
+    labels_test = df_path_cat_test.Category
+
+    df_path_cat_train = pd.DataFrame({'path': df_train.Filepath, 'Category': df_train.Category})
+    list_images_train = df_path_cat_train.path
+    labels_train = df_path_cat_train.Category
+
+
+
+    extraction des 2048 features de la couches Avg_pool de new_inception
+    features_test = extract_features(list_images_test)
+    features_train = extract_features(list_images_train)
+
+    features_test = pd.DataFrame(features_test)
+    features_train = pd.DataFrame(features_train)
+    features_test.to_csv("2048_features_test_forSVM")
+    print('sauvegarde des 2048 features_test_forSVM')
+    features_train.to_csv("2048_features_train_forSVM")
+    print('sauvegarde des 2048 features_train_forSVM')
+
+
+    pca = PCA(n_components=0.9)
+    features_train_pca = pca.fit_transform(features_train)
+    features_test_pca = pca.transform(features_test)
+
+
+    ## utilisation d'une SVM pour séparer les catégories
+
+    clf = SVC()
+    parametres = { 'C' : [0.1,1,10], 'kernel': ['rbf', 'linear','poly'], 'gamma' : [0.001, 0.1, 0.5]}
+    grid_clf = model_selection.GridSearchCV(clf, param_grid = parametres)
+
+    grid_clf.fit(features_train_pca, labels_train)
+    pred = grid_clf.predict(features_test_pca)
+
+    test_labels = test_batches.classes
+    cm = confusion_matrix(labels_test, pred)
+    plot_confusion_matrix(cm, classe)
+
+    return grid_clf
+
+
+def top_table(pred):
+    pred = pd.DataFrame(np.transpose(predictions))
+    top = pd.DataFrame(columns=['top1','top2','top3','top4','top5'])
+    resultats = pd.DataFrame(index = classe, columns=['top1','top3','top5'])
+    average = pd.DataFrame(index = ['Average'], columns=['top1','top3','top5'])
+    test_labels_df = pd.DataFrame((test_labels), columns = ['cat'])
+    valid_top1 = 0
+    valid_top3 = 0
+    valid_top5 = 0
+
+    for i in range(pred.shape[1]):# récupération des 5 meilleures prédictions
+        maximum = pred[i].sort_values(ascending = False)
+        top.loc[i] = maximum.index[0:5]
+
+
+    for k in range(len(classe)):# stats sur les top1 top3 top5 (à optimiser)
+        liste = test_labels_df[(test_labels_df.cat==k)]
+        liste_index = list(liste.index)
+        for i in liste_index:
+            if test_labels_df.loc[i, 'cat'] == top.loc[i, 'top1']:
+                valid_top1 = valid_top1 + 1
+                valid_top3 = valid_top3 + 1
+                valid_top5 = valid_top5 + 1
+            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top2']) or
+                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top3'])):
+                valid_top3 = valid_top3 + 1
+                valid_top5 = valid_top5 + 1
+            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top4']) or
+                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top5'])):
+                valid_top5 = valid_top5 + 1
+        resultats.loc[classe[k]]['top1'] = valid_top1/len(liste_index)*100
+        resultats.loc[classe[k]]['top3'] = valid_top3/len(liste_index)*100
+        resultats.loc[classe[k]]['top5'] = valid_top5/len(liste_index)*100
+        valid_top1 = 0
+        valid_top3 = 0
+        valid_top5 = 0
+
+    average['top1'] = np.mean(resultats.top1)
+    average['top3'] = np.mean(resultats.top3)
+    average['top5'] = np.mean(resultats.top5)
+    resultats = pd.concat([resultats,average], axis = 0)
+    resultats.to_csv("resultats_prédiction.csv")
+    print(resultats)
+    return resultats
+
              #######################################################
              ############## ENVIRONNEMENT A ADAPTER ################
              ################## SELON UTILISATEUR ##################
+             #######################################################
+
+
 
 work_dir="Desktop/Books/" # Contient les fichiers csv, le corpus et les databases train et test
 
@@ -212,97 +357,45 @@ for i in range(len(df_train.Filename)):
     filepath.append(train_path+"/"+df_train.Category[i]+"/"+df_train.Filename[i])
 df_train["Filepath"]=filepath
 
+
+
              #######################################################
-             ########## ENTRAINEMENT DU MODELE INCEPTION ###########
+             ################### CODE PRINCIPAL ####################
              #######################################################
 
-if os.path.isfile('best_results_180905.json') == True:
-    print("Chargement du modèle new_inception pré-entrainé")
-    json_file = open("model.json", 'r')
+
+
+if os.path.isfile('best_results_inception_180905.json') == True:
+    print("Chargement du modèle new_inception pré-entrainé...")
+    json_file = open("best_results_inception_180905.json", 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     new_inception = model_from_json(loaded_model_json)
-    new_inception.load_weights("model.h5")
-    print("Modèle chargé, loader une image pour effectuer une prediction")
-
-    pred_image = new_inception.predict()
+    new_inception.load_weights("best_results_inception_180905.h5")
+    print("Modèle de prédiction new_inception chargé")
 else:
-    print("Veuillez charger le modèle pré-entrainé ou entrainer le modèle à nouveau")
+    print("Le modèle de prédiction \"new_inception\" n'a pas été chargé")
 ## Import de mon modèle de Deep learning ##
-    inception = keras.applications.inception_v3.InceptionV3(input_shape=(299,299,3), weights='imagenet')
 
-    train_batches = ImageDataGenerator(preprocessing_function=keras.applications.inception_v3.preprocess_input).flow_from_directory(
-        train_path, target_size=(299,299))
-    test_batches = ImageDataGenerator(preprocessing_function=keras.applications.inception_v3.preprocess_input).flow_from_directory(
-        test_path, target_size=(299,299), shuffle =False) # shuffle = False pour la matrice de confusion
+if os.path.isfile('clf_SVM_inception.h5')==True:
+    print('chargement du modèle SVM_new_inception...')
+    clf_SVM_inception = open('clf_SVM_inception.h5')
+    print("Modèle de prédiction SVM_new_inception chargé")
+else:
+    print("Le modèle de prédiction \"SVM_new_inception\" n'a pas été chargé")
 
-    ## construction du CNN
-    inception.summary()
-
-    x = inception.layers[-2].output #suppression de la dernière couche
-
-    x = Dense(1024, activation='sigmoid')(x)
-    x = Dropout(0.5)(x)
-    x = Dense(30, activation='softmax')(x)
-    new_inception = Model(inputs=inception.input, outputs=x) # nouveau modèle avec l'output modifié, ainsi que le Dropout
-
-    for layer in new_inception.layers[:-100]:# choix du nombre de couche à ré-entrainer
-            layer.trainable=False
-    new_inception.summary()
-
-    ## entrainement du CNN avec des callbacks en cas d'overfitting
-    early_stop = callbacks.EarlyStopping(monitor='val_loss', patience =5, verbose = 1)
-    callbacks_list = [early_stop]
-
-    new_inception.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics = ['accuracy'])
-    new_inception.fit_generator(train_batches, validation_data=test_batches, epochs=10,verbose=1, callbacks=callbacks_list)
+if os.path.isfile('clf_NB_trained.h5')==True:
+    print('chargement du modèle de Text Mining...')
+    clf_TextMining=open("clf_NB_trained")
+    print("Modèle de Text Mining chargé")
+else:
+    print("Le modèle de Text Mining \"clf_TextMining\" n'a pas été chargé")
 
 
-    ## sauvegarde ou chargement du modèle
-    new_inception.save_weights('model.h5')
-    model_json = new_inception.to_json()
-    with open('model', "w") as json_file:
-        json_file.write(model_json)
-    json_file.close()
 
-    ## Prédiction et affichage de la matrice de Confusion
-    cat = pd.DataFrame(df_train['Category'].value_counts())
-    classe = list(cat.index.values)
-    classe.sort()# je récupère le nom de mes catégorie dans l'ordre
-
-    predictions = new_inception.predict_generator(test_batches, verbose =1)
-    test_labels = test_batches.classes
-    cm = confusion_matrix(test_labels, predictions.argmax(axis=1))
-    plot_confusion_matrix(cm, classe)
-
-
-    ############# extraction des 2048 features du globalPool d'inception ###############
-
-
-    df_path_cat_test = pd.DataFrame({'path': df_test.Filepath, 'Category': df_test.Category})
-    list_images_test = df_path_cat_test.path
-    labels_test = df_path_cat_test.Category
-
-    df_path_cat_train = pd.DataFrame({'path': df_train.Filepath, 'Category': df_train.Category})
-    list_images_train = df_path_cat_train.path
-    labels_train = df_path_cat_train.Category
-
-    features_test = extract_features(list_images_test)
-    features_train = extract_features(list_images_train)
-
-    ## utilisation d'une SVM pour séparer les catégories
-
-    clf = SVC()
-    parametres = { 'C' : [0.1,1,10], 'kernel': ['rbf', 'linear','poly'], 'gamma' : [0.001, 0.1, 0.5]}
-    grid_clf = model_selection.GridSearchCV(clf, param_grid = parametres)
-
-    grid_clf.fit(features_train, labels_train)
-    pred = grid_clf.predict(features_test)
-
-    cm = confusion_matrix(labels_test, pred)
-    plot_confusion_matrix(cm, classe)
 
     ## Récupération des top1, top3 et top5 accuracy
+def top_table(pred):
     pred = pd.DataFrame(np.transpose(predictions))
     top = pd.DataFrame(columns=['top1','top2','top3','top4','top5'])
     resultats = pd.DataFrame(index = classe, columns=['top1','top3','top5'])
