@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import cross_val_score
 
 import seaborn as sns
@@ -131,6 +132,7 @@ X_train_counts = count_vect.fit_transform(X_train["Texte sur les images train"])
 X_test_counts = count_vect.transform(X_test["Texte sur les images test"])
 tfidf_transformer = TfidfTransformer()
 X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+X_test_tfidf = tfidf_transformer.transform(X_test_counts)
 
 
 ############################################################################
@@ -171,3 +173,15 @@ plt.show()
 
 # scores of the 4 models
 print(cv_df.groupby('model_name').accuracy.mean())
+
+# Display of a confusion matrix with our best model
+model = LinearSVC()
+model.fit(X_train_tfidf, y_train)
+y_pred = model.predict(X_test_tfidf)
+from sklearn.metrics import confusion_matrix
+conf_mat = confusion_matrix(y_test, y_pred)
+fig, ax = plt.subplots(figsize=(10,10))
+sns.heatmap(conf_mat, annot=True, fmt='d')
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.show()
