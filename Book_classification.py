@@ -20,6 +20,9 @@ from nltk.stem.snowball import EnglishStemmer
 ### import nltk
 ###nltk.download('stopwords')
 
+
+from sklearn.decomposition import PCA
+from sklearn.ensemble import VotingClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
@@ -375,6 +378,7 @@ if os.path.isfile('best_results_inception_180905.json') == True:
     print("Modèle de prédiction new_inception chargé")
 else:
     print("Le modèle de prédiction \"new_inception\" n'a pas été chargé")
+
 ## Import de mon modèle de Deep learning ##
 
 if os.path.isfile('clf_SVM_inception.h5')==True:
@@ -384,6 +388,7 @@ if os.path.isfile('clf_SVM_inception.h5')==True:
 else:
     print("Le modèle de prédiction \"SVM_new_inception\" n'a pas été chargé")
 
+
 if os.path.isfile('clf_NB_trained.h5')==True:
     print('chargement du modèle de Text Mining...')
     clf_TextMining=open("clf_NB_trained")
@@ -392,52 +397,10 @@ else:
     print("Le modèle de Text Mining \"clf_TextMining\" n'a pas été chargé")
 
 
+if textreader(input) ==
 
 
-    ## Récupération des top1, top3 et top5 accuracy
-def top_table(pred):
-    pred = pd.DataFrame(np.transpose(predictions))
-    top = pd.DataFrame(columns=['top1','top2','top3','top4','top5'])
-    resultats = pd.DataFrame(index = classe, columns=['top1','top3','top5'])
-    average = pd.DataFrame(index = ['Average'], columns=['top1','top3','top5'])
-    test_labels_df = pd.DataFrame((test_labels), columns = ['cat'])
-    valid_top1 = 0
-    valid_top3 = 0
-    valid_top5 = 0
 
-    for i in range(pred.shape[1]):# récupération des 5 meilleures prédictions
-        maximum = pred[i].sort_values(ascending = False)
-        top.loc[i] = maximum.index[0:5]
-
-
-    for k in range(len(classe)):# stats sur les top1 top3 top5 (à optimiser)
-        liste = test_labels_df[(test_labels_df.cat==k)]
-        liste_index = list(liste.index)
-        for i in liste_index:
-            if test_labels_df.loc[i, 'cat'] == top.loc[i, 'top1']:
-                valid_top1 = valid_top1 + 1
-                valid_top3 = valid_top3 + 1
-                valid_top5 = valid_top5 + 1
-            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top2']) or
-                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top3'])):
-                valid_top3 = valid_top3 + 1
-                valid_top5 = valid_top5 + 1
-            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top4']) or
-                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top5'])):
-                valid_top5 = valid_top5 + 1
-        resultats.loc[classe[k]]['top1'] = valid_top1/len(liste_index)*100
-        resultats.loc[classe[k]]['top3'] = valid_top3/len(liste_index)*100
-        resultats.loc[classe[k]]['top5'] = valid_top5/len(liste_index)*100
-        valid_top1 = 0
-        valid_top3 = 0
-        valid_top5 = 0
-
-    average['top1'] = np.mean(resultats.top1)
-    average['top3'] = np.mean(resultats.top3)
-    average['top5'] = np.mean(resultats.top5)
-    resultats = pd.concat([resultats,average], axis = 0)
-    resultats.to_csv("resultats_model_Inception.csv")
-    print(resultats)
 
 
  #######################################################
