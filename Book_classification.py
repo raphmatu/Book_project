@@ -499,8 +499,7 @@ def classement_predictions(predictions, classement=5):
 ##  3 data sets were available :
 ## - Data set Train ==> 51 300 images
 ## - Data set test ==> 5 700 images
-## - Data set Final ==> 207 000 images where we removed the 57 000 images of
-##                     train and test
+## - Data set Final ==> 207 000 images where we removed the 57 000 images of train and test
 
 
 ## Loading of dataframe train and test.
@@ -545,7 +544,9 @@ classe.sort()
 
 ## pre-trained model loading
 
-if os.path.isfile(work_dir + 'new_inception.json') == True:
+if os.path.isfile(work_dir + 'new_inception.json') == True and \
+   os.path.isfile(work_dir + 'new_inception.h5') == True:
+
     print("New_inception model loading...")
     json_file = open(work_dir + "new_inception.json", 'r')
     loaded_model_json = json_file.read()
@@ -558,7 +559,8 @@ else:
 
 ## Import de mon modèle de Deep learning ##
 
-if os.path.isfile(work_dir + 'SVM_new_inception')==True:
+if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
+   os.path.isfile(work_dir + 'pca_pre_SVM') == True:
     print('SVM_new_inception model loading...')
     pca_pre_svm = open(work_dir + 'pca_pre_SVM')
     clf_SVM_new_inception = open(work_dir + 'SVM_new_inception')
@@ -567,7 +569,10 @@ else:
     print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
 
 
-if os.path.isfile(work_dir + 'clf_textmining')==True:
+if os.path.isfile(work_dir + 'clf_textmining') == True and \
+   os.path.isfile(work_dir + 'stopwords') == True and \
+   os.path.isfile(work_dir + 'countvectorizer') == True and \
+   os.path.isfile(work_dir + 'tfidf_transformer') == True:
     print('Text Mining model loading...')
 
     stop_words=joblib.load(work_dir + "stopwords")
