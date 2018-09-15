@@ -528,7 +528,7 @@ df_list.columns=Col_names
 ## Filepath of database Train and test
 train_path = work_dir+'Database_train'
 test_path = work_dir+'Database_test'
-
+list_path=work_dir+"BigData"
 ## Adding filepath column to dataframes
 filepath=list()
 for i in range(len(df_test.Filename)):
@@ -542,7 +542,7 @@ df_train["Filepath"]=filepath
 
 filepath=list()
 for i in range(len(df_list.Filename)):
-    filepath.append(train_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
+    filepath.append(list_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
 df_list["Filepath"]=filepath
 
 ## storage of category names
@@ -640,7 +640,7 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
                             columns=['Text', 'inception', 'SVM_inception'])
 
     total_pred.Text = classement_predictions(pred_clf_textmining)
-    total_pred.inception = classement_predictions(pred_clf_inception)
+    total_pred.inception = classement_predictions(pre_pred_clf_inception)
     total_pred.SVM_inception = classement_predictions(pred_svm_inception)
     print(total_pred)
 
