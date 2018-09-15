@@ -501,7 +501,11 @@ def top_table(pred, label):
 def classement_predictions(predictions):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
-    return maximum.index[0:3]
+    max_3 = maximum.index[0:3]
+    classe_3 = []
+    for i in max_3:
+        classe_3.append(classe[i])
+    return classe_3
 
 
 
@@ -629,7 +633,7 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
 
         pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
 
-    pre_pred_clf_inception = inception_one_image(img)
+    pred_clf_inception = inception_one_image(img)
     #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
 
     features_img = extract_features_keras(image_path)
@@ -640,7 +644,7 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
                             columns=['Text', 'inception', 'SVM_inception'])
 
     total_pred.Text = classement_predictions(pred_clf_textmining)
-    total_pred.inception = classement_predictions(pre_pred_clf_inception)
+    total_pred.inception = classement_predictions(pred_clf_inception)
     total_pred.SVM_inception = classement_predictions(pred_svm_inception)
     print(total_pred)
 
