@@ -49,6 +49,7 @@ import os
 import csv
 import keras
 import nltk
+import pickle
 import itertools
 import cv2 as cv
 %matplotlib inline
@@ -67,7 +68,7 @@ nltk.download('punkt')
 nltk.download('stopwords')
 
 from sklearn.externals import joblib
-from job import load, dump
+from joblib import load, dump
 from sklearn.decomposition import PCA
 from sklearn.ensemble import VotingClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -497,10 +498,10 @@ def top_table(pred, label):
     print(resultats)
     return resultats
 
-def classement_predictions(predictions, classement=5):
+def classement_predictions(predictions):
     pred = pd.DataFrame(np.transpose(predictions))
-    maximum = pred[i].sort_values(ascending = False)
-    return maximum.index[0:classement]
+    maximum = pred.sort_values(by=0, ascending = False)
+    return maximum.index[0:3]
 
 
 
@@ -589,8 +590,8 @@ if os.path.isfile(work_dir + 'clf_textmining') == True and \
 
     stop_words=load(work_dir + "stopwords")
     countv=load(work_dir + "countvectorizer")
-    tformer=load(work_dir + "tfidf_transformer")
-    clf_TextMining=load(work_dir + "clf_textmining")
+    tformer=joblib.load(work_dir + "tfidf_transformer")
+    clf_TextMining=joblib.load(work_dir + "clf_textmining")
 
     print("Text Mining model loaded")
 else:
@@ -629,11 +630,11 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
         pred_clf_textmining = clf_Text.predict(text_img_to_pred)
 
     pre_pred_clf_inception = inception_one_image(img)
-    pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
+    #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
 
     features_img = extract_features_keras(image_path)
     features_img_pca = pca.transform(features_img)
-    pred_svm_inception = clf_SVM_new_inception.predict(features_img_pca)
+    pred_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
 
     total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
                             columns=['Text', 'inception', 'SVM_inception'])
