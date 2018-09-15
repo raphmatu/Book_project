@@ -627,7 +627,7 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
         Text_img_count=countv.transform(Filtered_text_img)
         text_img_to_pred=tformer.transform(Text_img_count)
 
-        pred_clf_textmining = clf_Text.predict(text_img_to_pred)
+        pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
 
     pre_pred_clf_inception = inception_one_image(img)
     #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
