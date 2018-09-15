@@ -60,12 +60,14 @@ from time import time
 from sklearn.svm import SVC
 import matplotlib.pylab as plt
 
-nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import EnglishStemmer
+nltk.download('punkt')
+nltk.download('stopwords')
 
 from sklearn.externals import joblib
+from job import load, dump
 from sklearn.decomposition import PCA
 from sklearn.ensemble import VotingClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -181,7 +183,8 @@ def Corpus_dropna(Corpus):
     Test["Text"]=Corpus
     Test_dropna=pd.DataFrame()
     Test_dropna["Text"]=Test.Text[Test.Text!=""]
-    Test_dropna["Category"]=df_test.Category[Test.Text!=""]
+    Test_dropna["Category"]='unkown'
+    #Test_dropna["Category"]=df_test.Category[Test.Text!=""]
     return Test_dropna
 
 def stop_words_filtering(liste,stop_words):
@@ -270,7 +273,7 @@ def Text_mining(df_train, df_test, save = False):
         joblib.dump(clf,work_dir+"clf_Textmining")
     #clf_loaded=joblib.load(work_dir+"clf_Textmining")
 
-    return stopwords, countvectorizer, tfidf_transformer, clf_Textmining
+    return clf
 
 
 ################### inception model functions ###################
@@ -325,6 +328,15 @@ def extract_features_keras(list_images):
         predictions = model.predict(x)
         features[i,:]=np.squeeze(predictions)
     return features
+
+def inception_one_image(image_path):
+
+    img = image.load_img(image_path, target_size=(299, 299))
+    x = image.img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    x = preprocess_input(x)
+    predictions = new_inception.predict(x)
+    return predictions
 
 def new_inception_training(train_path, test_path, classe, save = False):
     ## Main function of new_inception model training
@@ -562,8 +574,8 @@ else:
 if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
    os.path.isfile(work_dir + 'pca_pre_SVM') == True:
     print('SVM_new_inception model loading...')
-    pca_pre_svm = open(work_dir + 'pca_pre_SVM')
-    clf_SVM_new_inception = open(work_dir + 'SVM_new_inception')
+    pca_pre_svm = load(work_dir + 'pca_pre_SVM')
+    clf_SVM_new_inception = load(work_dir + 'SVM_new_inception')
     print("SVM_new_inception model loaded")
 else:
     print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
@@ -575,10 +587,10 @@ if os.path.isfile(work_dir + 'clf_textmining') == True and \
    os.path.isfile(work_dir + 'tfidf_transformer') == True:
     print('Text Mining model loading...')
 
-    stop_words=joblib.load(work_dir + "stopwords")
-    countv=joblib.load(work_dir + "countvectorizer")
-    tformer=joblib.load(work_dir + "tfidf_transformer")
-    clf_TextMining=open(work_dir + "clf_Textmining")
+    stop_words=load(work_dir + "stopwords")
+    countv=load(work_dir + "countvectorizer")
+    tformer=load(work_dir + "tfidf_transformer")
+    clf_TextMining=load(work_dir + "clf_textmining")
 
     print("Text Mining model loaded")
 else:
@@ -599,25 +611,24 @@ else:
 
 print ('If you want to test the classifier, please enter image filepath to function prediction() ')
 
-def prediction(image_path, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
 
+    image_path = list([img])
     text_img = Final_textreader(image_path)
-    if text_mg == []:
+    if text_img == []:
         print('Text Mining classifier did not find any text on the image')
     else :
         print('Some text has been found on the image')
         df_text_img=Corpus_dropna(text_img)
-        Filtered_text_mg=text_processer(df_text_img.Text,stop_words=stop_words,stemmer=None)
+        Filtered_text_img=text_processer(df_text_img.Text,stop_words=stop_words,stemmer=None)
         Text_img_count=countv.transform(Filtered_text_img)
         text_img_to_pred=tformer.transform(Text_img_count)
 
-        pred_clf_textmining = clf_TextMining.predict(text_img_to_pred)
+        pred_clf_textmining = clf_Text.predict(text_img_to_pred)
 
-    img = ImageDataGenerator(preprocessing_function=keras.applications.inception_v3.preprocess_input).flow_from_directory(
-                            image_path, target_size=(299,299))
-    pre_pred_clf_inception = clf_new_inception.predict_generator(img)
+    pre_pred_clf_inception = inception_one_image(img)
     pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
 
     features_img = extract_features_keras(image_path)
