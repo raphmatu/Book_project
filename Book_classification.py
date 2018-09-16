@@ -98,6 +98,54 @@ from keras_applications.inception_v3 import InceptionV3, preprocess_input
 pytesseract.pytesseract.tesseract_cmd='C:/Program Files (x86)/Tesseract-OCR/tesseract'
 
 
+#######################################################
+############ PRE-TRAINED MODEL LOADING ################
+#######################################################
+
+
+## pre-trained model loading
+
+if os.path.isfile(work_dir + 'new_inception.json') == True and \
+   os.path.isfile(work_dir + 'new_inception.h5') == True:
+
+    print("New_inception model loading...")
+    json_file = open(work_dir + "new_inception.json", 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    new_inception = model_from_json(loaded_model_json)
+    new_inception.load_weights(work_dir + "new_inception.h5")
+    print("New_inception model loaded")
+else:
+    print("New_inception model can not be loaded, please check the file name or the filepath")
+
+
+if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
+   os.path.isfile(work_dir + 'pca_pre_SVM') == True:
+    print('SVM_new_inception model loading...')
+    pca_pre_svm = load(work_dir + 'pca_pre_SVM')
+    clf_SVM_new_inception = load(work_dir + 'SVM_new_inception')
+    print("SVM_new_inception model loaded")
+else:
+    print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
+
+
+if os.path.isfile(work_dir + 'clf_textmining') == True and \
+   os.path.isfile(work_dir + 'stopwords') == True and \
+   os.path.isfile(work_dir + 'countvectorizer') == True and \
+   os.path.isfile(work_dir + 'tfidf_transformer') == True:
+    print('Text Mining model loading...')
+
+    stop_words=load(work_dir + "stopwords")
+    countv=load(work_dir + "countvectorizer")
+    tformer=joblib.load(work_dir + "tfidf_transformer")
+    clf_TextMining=joblib.load(work_dir + "clf_textmining")
+
+    print("Text Mining model loaded")
+else:
+    print("Text Mining model can not be loaded, please check the file name or the filepath")
+
+Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
+
 
 #######################################################
 ####################### VARIABLES #####################
@@ -598,7 +646,7 @@ def classement_predictions(predictions, classe=classe):
 
     return classe_3, maximum, label,
 
-def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
 
@@ -679,48 +727,13 @@ def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_incepti
              ################### MAIN CODE #########################
              #######################################################
 
-## pre-trained model loading
-
-if os.path.isfile(work_dir + 'new_inception.json') == True and \
-   os.path.isfile(work_dir + 'new_inception.h5') == True:
-
-    print("New_inception model loading...")
-    json_file = open(work_dir + "new_inception.json", 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    new_inception = model_from_json(loaded_model_json)
-    new_inception.load_weights(work_dir + "new_inception.h5")
-    print("New_inception model loaded")
-else:
-    print("New_inception model can not be loaded, please check the file name or the filepath")
+             #######################################################
+             #################### MAIN CODE ########################
+             #######################################################
 
 
-if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
-   os.path.isfile(work_dir + 'pca_pre_SVM') == True:
-    print('SVM_new_inception model loading...')
-    pca_pre_svm = load(work_dir + 'pca_pre_SVM')
-    clf_SVM_new_inception = load(work_dir + 'SVM_new_inception')
-    print("SVM_new_inception model loaded")
-else:
-    print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
 
 
-if os.path.isfile(work_dir + 'clf_textmining') == True and \
-   os.path.isfile(work_dir + 'stopwords') == True and \
-   os.path.isfile(work_dir + 'countvectorizer') == True and \
-   os.path.isfile(work_dir + 'tfidf_transformer') == True:
-    print('Text Mining model loading...')
-
-    stop_words=load(work_dir + "stopwords")
-    countv=load(work_dir + "countvectorizer")
-    tformer=joblib.load(work_dir + "tfidf_transformer")
-    clf_TextMining=joblib.load(work_dir + "clf_textmining")
-
-    print("Text Mining model loaded")
-else:
-    print("Text Mining model can not be loaded, please check the file name or the filepath")
-
-Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
 ## Here we present our results after each training model. We present top1, top3
 ## and top5 results.
 
