@@ -746,8 +746,11 @@ def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMin
         print('Text Mining classifier did not find any text on the image')
         total_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
                             columns=['inception', 'SVM_inception'])
-        total_pred.inception, proba_clf_inception, label_proba_clf_inception = classement_predictions(pred_clf_inception)
-        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+        total_pred_best_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
+                            columns=['Text', 'inception', 'SVM_inception'])
+        total_pred.inception, proba_clf_inception, label_proba_clf_inception, total_pred_best_pred.inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception, total_pred_best_pred.SVM_inception = classement_predictions(pred_clf_svm_inception)
+
     else :
         print('Some text has been found on the image')
         df_text_img=Corpus_dropna(text_img)
