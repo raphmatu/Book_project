@@ -501,7 +501,12 @@ def top_table(pred, ytest, label):
 def classement_predictions(predictions):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
-    return maximum.index[0:3]
+    max_3 = maximum.index[0:3]
+    classe_3 = []
+    for i in max_3:
+        classe_3.append(classe[i])
+
+    return classe_3
 
 
 
