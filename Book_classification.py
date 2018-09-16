@@ -818,32 +818,6 @@ def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_incepti
     onglet = Tabs(tabs=[tab1,tab2,tab3])
     show(onglet)
 
-
-
-             #######################################################
-             ################### MAIN CODE #########################
-             #######################################################
-
-clear_output()
-print('******************************************************************')
-print('******************************************************************')
-print('***************** Welcome in a Book Classifier *******************')
-print('********* You can upload a book cover in the function ************')
-print('******************************************************************')
-print('**************** prediction() ** or ** best_pred()****************')
-print('******************************************************************')
-print('************ if you want to see our statistics on ****************')
-print('******************************************************************')
-print('***************** -- Inception CNN model *************************')
-print('**************************** or **********************************')
-print('******************* -- Text Mining model *************************')
-print('******************************************************************')
-print('************ use see_statistics() without any arguments **********')
-print('******************************************************************')
-print('********************** Please enjoy ! *****************************')
-print('******************************************************************')
-
-
 def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
@@ -865,7 +839,7 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
                 Top2f=classe[pred.SVM_inception[0]]
             Top2Text=classe[pred.Text[1]]
             Top2SVM=[pred.SVM_inception[1]]
-            # Si la prediction n°2 du clf texte ne correspond ni au top1 ou au top2 
+            # Si la prediction n°2 du clf texte ne correspond ni au top1 ou au top2
             if(Top2Text!=Top1f and Top2Text!=Top2f):
                 # Et que la prédiction n°2 du classifieur svm non plus
                 if(Top2SVM!=Top1f and Top2SVM!=Top2f):
@@ -911,7 +885,7 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
                 Top2f=classe[pred.inception[0]]
             Top2Inc=classe[pred.inception[1]]
             Top2SVM=classe[pred.SVM_inception[1]]
-             # Si la prediction n°2 du clf svm ne correspond ni au top1 ou au top2 
+             # Si la prediction n°2 du clf svm ne correspond ni au top1 ou au top2
             if(Top2SVM!=Top1f and Top2SVM!=Top2f):
                  # Et que la prédiction n°2 du classifieur inception non plus
                 if(Top2Inc!=Top1f and Top2Inc!=Top2f):
@@ -943,11 +917,40 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
             # Si les clf prédisent le même top 1 et top 2
             else:
                 # top 3 = la prédiction la plus fiable parmi les prédictions n°3 de chaque clf
-                Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]                  
+                Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]
     resultats["Best Predictions"][0]=Top1f
     resultats["Best Predictions"][1]=Top2f
     resultats["Best Predictions"][2]=Top3f
     return resultats
+
+
+             #######################################################
+             ################### MAIN CODE #########################
+             #######################################################
+
+
+
+clear_output()
+print('******************************************************************')
+print('******************************************************************')
+print('***************** Welcome in a Book Classifier *******************')
+print('********* You can upload a book cover in the function ************')
+print('******************************************************************')
+print('**************** prediction() ** or ** best_pred()****************')
+print('******************************************************************')
+print('************ if you want to see our statistics on ****************')
+print('******************************************************************')
+print('***************** -- Inception CNN model *************************')
+print('**************************** or **********************************')
+print('******************* -- Text Mining model *************************')
+print('******************************************************************')
+print('************ use see_statistics() without any arguments **********')
+print('******************************************************************')
+print('********************** Please enjoy ! ****************************')
+print('******************************************************************')
+
+
+
 
 
 ## end
