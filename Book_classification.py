@@ -40,7 +40,7 @@
 ##
 ## You have to put all of them in one folder :
 
-work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\Final\\'
+work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\final2\\'
 #work_dir='Desktop/Books/'
 
 
@@ -153,7 +153,7 @@ else:
     print("Text Mining model can not be loaded, please check the file name or the filepath")
 
 Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
-Choice_matrix_img=pd.read_csv("Desktop/Books/Choice_matrix_img.csv", sep=";",index_col=0)
+Choice_matrix_img=pd.read_csv(work_dir + 'Choice_matrix_img.csv', sep=";",index_col=0)
 
 #######################################################
 ####################### VARIABLES #####################
@@ -345,7 +345,7 @@ def Final_textreader(filepath):
         Text=list(itertools.chain.from_iterable(Text))
         Text=list(set(Text))
         Corpus.append(" ".join(Text))
-        #print("Images traitées : ",i)
+        #print("Images traitï¿½es : ",i)
     #t1=time()-t0
     #print(t1)
     return Corpus
@@ -683,12 +683,12 @@ def top_table(pred, ytest, label):
     valid_top3 = 0
     valid_top5 = 0
 
-    for i in range(pred.shape[1]):# récupération des 5 meilleures prédictions
+    for i in range(pred.shape[1]):# rï¿½cupï¿½ration des 5 meilleures prï¿½dictions
         maximum = pred[i].sort_values(ascending = False)
         top.loc[i] = maximum.index[0:5]
 
 
-    for k in range(len(label)):# stats sur les top1 top3 top5 (à optimiser)
+    for k in range(len(label)):# stats sur les top1 top3 top5 (ï¿½ optimiser)
         liste_index = yt.index[yt==k]
         for i in liste_index:
             if test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top1']:
@@ -713,7 +713,7 @@ def top_table(pred, ytest, label):
     average['top3'] = np.mean(resultats.top3)
     average['top5'] = np.mean(resultats.top5)
     resultats = pd.concat([resultats,average], axis = 0)
-    resultats.to_csv(work_dir + "resultats_prédiction.csv")
+    resultats.to_csv(work_dir + "resultats_prï¿½diction.csv")
     print(resultats)
     return resultats
 
@@ -728,7 +728,7 @@ def classement_predictions(predictions, classe=classe):
     for i in maximum.index:
         label.append(classe[i])
 
-    return classe_3, maximum, label,
+    return classe_3, maximum, label, maximum.index[0:3]
 
 def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
@@ -760,13 +760,22 @@ def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMin
         total_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
                             columns=['Text', 'inception', 'SVM_inception'])
 
-        total_pred.Text, proba_textmining, label_proba_textmining = classement_predictions(pred_clf_textmining)
-        total_pred.inception, proba_clf_inception, label_proba_clf_inception = classement_predictions(pred_clf_inception)
-        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+        total_pred_best_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
+                            columns=['Text', 'inception', 'SVM_inception'])
+
+        total_pred.Text, proba_textmining, label_proba_textmining, total_pred_best_pred.Text = classement_predictions(pred_clf_textmining)
+        total_pred.inception, proba_clf_inception, label_proba_clf_inception, total_pred_best_pred.inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception, total_pred_best_pred.SVM_inception = classement_predictions(pred_clf_svm_inception)
+
+
+
         affichage_proba(proba_textmining=proba_textmining, proba_clf_inception=proba_clf_inception,
                         proba_clf_svm_inception = proba_clf_svm_inception, label_proba_textmining = label_proba_textmining,
-                          label_proba_clf_inception = label_proba_clf_inception, label_proba_clf_svm_inception= label_proba_clf_svm_inception)
-    return total_pred
+                        label_proba_clf_inception = label_proba_clf_inception,
+                        label_proba_clf_svm_inception= label_proba_clf_svm_inception)
+
+
+    return total_pred, total_pred_best_pred
 
 
 def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_inception,
@@ -780,9 +789,9 @@ def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_incepti
     inception = ColumnDataSource(proba_et_label_inception)
     svm_inception = ColumnDataSource(proba_et_label_svm_inception)
 
-    hover_text = HoverTool(tooltips=[("probabilité ", "@proba_Text")])
-    hover_inception = HoverTool(tooltips=[("probabilité ", "@proba_inception")])
-    hover_SVM_inception = HoverTool(tooltips=[("probabilité ", "@proba_SVM_inception")])
+    hover_text = HoverTool(tooltips=[("probabilitï¿½ ", "@proba_Text")])
+    hover_inception = HoverTool(tooltips=[("probabilitï¿½ ", "@proba_inception")])
+    hover_SVM_inception = HoverTool(tooltips=[("probabilitï¿½ ", "@proba_SVM_inception")])
 
     fig1 = figure(plot_width =1000, plot_height=400, x_range = label_proba_textmining)
     fig1.vbar(x='label_Text', top= 'proba_Text', source = text, width=0.5, fill_color = '#45A7E2', line_color = '#45A7E2')
@@ -836,7 +845,7 @@ print('******************************************************************')
 def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
-    pred=prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
+    pred_no_use, pred =prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca)
     if(len(pred.columns)==3):
