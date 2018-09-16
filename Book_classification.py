@@ -227,6 +227,82 @@ classe=['Arts & Photography',
              #################### FUNCTIONS ########################
              #######################################################
 
+########################## LeNet model  ############################
+
+def LeNet_model(df_train=df_train, df_test=df_test):
+
+    # Create input array for CNN learning
+    def generate_image_data(images,size=28):
+       tensor=list()
+
+    # images = list of all images filepath ex: test_data.path
+    # size = int, wanted picture size
+
+       for i in range(len(images)):
+    # Image reading
+           img=plt.imread(images[i])
+    # Image resizing
+           resized=cv2.resize(img,dsize=(size,size),interpolation=cv2.INTER_CUBIC)
+    # Detecting whether image is in greyscale
+           if(len(resized.shape)==2):
+               resized=grey2rgb(resized)
+    # Detecting whether image is in rgba
+           if(resized.shape[2]==4):
+               resized=(rgba2rgb(resized)*255).astype("int")
+    # Adding resized image to the list
+           tensor.append(resized)
+    # Transforming list of images into a single array
+       tensor=np.asarray(tensor)
+       return tensor
+
+
+    # Generating Train/Test datasets
+    Xtest=generate_image_data(df_test.path,size=28)
+    Xtrain=generate_image_data(df_train.path,size=28)
+    ytrain=df_train.Category_id
+    ytest=df_test.Category_id
+
+    ytest=np_utils.to_categorical(df_test.Category_id)
+    ytrain=np_utils.to_categorical(df_train.Category_id)
+
+
+    ###LeNet model
+    model = Sequential()
+    model.add(Conv2D(filters=30, kernel_size=(5,5), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model = Sequential()
+    model.add(Conv2D(filters=30, kernel_size=(5,5), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+
+    model.add(Conv2D(filters=15, kernel_size=(3,3), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Dropout(0.3))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+
+    model.add(Dense(40, activation='relu'))
+    model.add(Dense(30, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+
+    #model training
+    model.fit(Xtrain, ytrain, validation_data=(Xtest, ytest),epochs=50, batch_size=300, verbose=1,shuffle=True)
+
+    #prediction
+    test_pred = model.predict(Xtest)
+    print(test_pred)
+
+    pred = np.around(test_pred,decimals=8).argmax(axis=1)
+    scores = model.evaluate(Xtest, ytest, verbose=2)
+    print("Perte: %.2f Erreur: %.2f%%" % (scores[0], 100-scores[1]*100))
+    y = ytest.argmax(axis=1)
+
+    print(y.shape)
+    print(pred.shape)
+
 
 ################### Text preprocessing functions ###################
 
@@ -470,7 +546,7 @@ def inception_one_image(image_path):
     predictions = new_inception.predict(x)
     return predictions
 
-def new_inception_training(train_path, test_path, classe, save = False):
+def new_inception_training(train_path, test_path, classe=classe, save = False):
     ## Main function of new_inception model training
     ## Inception model is customed by removing last layer and adding 3 layers
     ## The last 100 layers are set as trainable
@@ -522,7 +598,7 @@ def new_inception_training(train_path, test_path, classe, save = False):
 
     return new_inception
 
-def SVM_new_inception(df_train, df_test, classe, save=False):
+def SVM_new_inception(df_train, df_test, classe=classe, save=False):
     ## First, PCA is used to reduced dimension of extracted features. We keep
     ## 90% of explained variability with 229 features.
     ## Then, SVM model is trained on reduced features to predict labels of images.
