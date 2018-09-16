@@ -1,5 +1,3 @@
-
-
 ## The objective of the program is to categorize books according to their cover.
 
 ## We used a dataset available at this address :
@@ -38,7 +36,7 @@
 ## You have to put all of them in one folder :
 
 work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\Final\\'
-
+#work_dir='Desktop/Books/'
 
 
             #######################################################
@@ -52,7 +50,7 @@ import nltk
 import pickle
 import itertools
 import cv2 as cv
-%matplotlib inline
+#%matplotlib inline
 import pytesseract
 import numpy as np
 import pandas as pd
@@ -184,7 +182,7 @@ def Corpus_dropna(Corpus):
     Test["Text"]=Corpus
     Test_dropna=pd.DataFrame()
     Test_dropna["Text"]=Test.Text[Test.Text!=""]
-    Test_dropna["Category"]='unkown'
+    Test_dropna["Category"]="unknown"
     #Test_dropna["Category"]=df_test.Category[Test.Text!=""]
     return Test_dropna
 
@@ -379,7 +377,7 @@ def new_inception_training(train_path, test_path, classe, save = False):
     test_labels = test_batches.classes
     cm = confusion_matrix(test_labels, predictions.argmax(axis=1))
     plot_confusion_matrix(cm, classe)
-    top_table(predictions, test_labels)
+    top_table(predictions)
 
     ## model saving
     if save == true:
@@ -444,22 +442,24 @@ def SVM_new_inception(df_train, df_test, classe, save=False):
     pred_proba = grid_clf.predic_proba(features_test_pca) ## for top_table function
     pred = grid_clf.predict(features_test_pca) ## for confusion matrix
 
+    test_labels = test_batches.classes
     cm = confusion_matrix(labels_test, pred)
     plot_confusion_matrix(cm, classe)
-    top_table(pred, labels_test)
-
 
     return grid_clf, pred_proba
 
 
-def top_table(pred, label):
+def top_table(pred, ytest, label):
     ## datatable of top_results
-
-    pred = pd.DataFrame(np.transpose(predictions))
+    yt=ytest
+    yt.index=range(len(yt))
+    pred = pd.DataFrame(np.transpose(pred))
     top = pd.DataFrame(columns=['top1','top2','top3','top4','top5'])
-    resultats = pd.DataFrame(index = classe, columns=['top1','top3','top5'])
+    resultats = pd.DataFrame(index = label, columns=['top1','top3','top5'])
     average = pd.DataFrame(index = ['Average'], columns=['top1','top3','top5'])
-    test_labels_df = pd.DataFrame((list(label)), columns = ['cat'])
+    test_labels_df=pd.DataFrame()
+    test_labels_df["cat"]=list(label)
+    test_labels_df["cat_id"]=list(range(len(label)))
     valid_top1 = 0
     valid_top3 = 0
     valid_top5 = 0
@@ -469,20 +469,19 @@ def top_table(pred, label):
         top.loc[i] = maximum.index[0:5]
 
 
-    for k in range(len(classe)):# stats sur les top1 top3 top5 (à optimiser)
-        liste = test_labels_df[(test_labels_df.cat==k)]
-        liste_index = list(liste.index)
+    for k in range(len(label)):# stats sur les top1 top3 top5 (à optimiser)
+        liste_index = yt.index[yt==k]
         for i in liste_index:
-            if test_labels_df.loc[i, 'cat'] == top.loc[i, 'top1']:
+            if test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top1']:
                 valid_top1 = valid_top1 + 1
                 valid_top3 = valid_top3 + 1
                 valid_top5 = valid_top5 + 1
-            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top2']) or
-                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top3'])):
+            elif ((test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top2']) or
+                    (test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top3'])):
                 valid_top3 = valid_top3 + 1
                 valid_top5 = valid_top5 + 1
-            elif ((test_labels_df.loc[i, 'cat'] == top.loc[i, 'top4']) or
-                    (test_labels_df.loc[i, 'cat'] == top.loc[i, 'top5'])):
+            elif ((test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top4']) or
+                    (test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top5'])):
                 valid_top5 = valid_top5 + 1
         resultats.loc[classe[k]]['top1'] = valid_top1/len(liste_index)*100
         resultats.loc[classe[k]]['top3'] = valid_top3/len(liste_index)*100
@@ -502,11 +501,7 @@ def top_table(pred, label):
 def classement_predictions(predictions):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
-    max_3 = maximum.index[0:3]
-    classe_3 = []
-    for i in max_3:
-        classe_3.append(classe[i])
-    return classe_3
+    return maximum.index[0:3]
 
 
 
@@ -552,9 +547,36 @@ df_list["Filepath"]=filepath
 
 ## storage of category names
 cat = pd.DataFrame(df_train['Category'].value_counts())
-classe = list(cat.index.values)
-classe.sort()
-
+classe=['Arts & Photography',
+ 'Biographies & Memoirs',
+ 'Business & Money',
+ 'Calendars',
+ "Children's Books",
+ 'Comics & Graphic Novels',
+ 'Computers & Technology',
+ 'Cookbooks, Food & Wine',
+ 'Crafts, Hobbies & Home',
+ 'Christian Books & Bibles',
+ 'Engineering & Transportation',
+ 'Health, Fitness & Dieting',
+ 'History',
+ 'Humor & Entertainment',
+ 'Law',
+ 'Literature & Fiction',
+ 'Medical Books',
+ 'Mystery, Thriller & Suspense',
+ 'Parenting & Relationships',
+ 'Politics & Social Sciences',
+ 'Reference',
+ 'Religion & Spirituality',
+ 'Romance',
+ 'Science & Math',
+ 'Science Fiction & Fantasy',
+ 'Self-Help',
+ 'Sports & Outdoors',
+ 'Teen & Young Adult',
+ 'Test Preparation',
+ 'Travel']
 
              #######################################################
              ################### MAIN CODE #########################
@@ -602,7 +624,7 @@ if os.path.isfile(work_dir + 'clf_textmining') == True and \
 else:
     print("Text Mining model can not be loaded, please check the file name or the filepath")
 
-
+Choice_matrix=pd.read_csv("Desktop/Books/Choice_matrix.csv", sep=";",index_col=0)
 ## Here we present our results after each training model. We present top1, top3
 ## and top5 results.
 
@@ -623,8 +645,18 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
 
     image_path = list([img])
     text_img = Final_textreader(image_path)
-    if text_img == []:
+    pre_pred_clf_inception = inception_one_image(img)
+    #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
+
+    features_img = extract_features_keras(image_path)
+    features_img_pca = pca.transform(features_img)
+    pred_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
+    if text_img == ['']:
         print('Text Mining classifier did not find any text on the image')
+        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+                            columns=['inception', 'SVM_inception'])
+        total_pred.inception = classement_predictions(pre_pred_clf_inception)
+        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
     else :
         print('Some text has been found on the image')
         df_text_img=Corpus_dropna(text_img)
@@ -634,20 +666,58 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
 
         pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
 
-    pred_clf_inception = inception_one_image(img)
-    #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
 
-    features_img = extract_features_keras(image_path)
-    features_img_pca = pca.transform(features_img)
-    pred_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
 
-    total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
                             columns=['Text', 'inception', 'SVM_inception'])
 
-    total_pred.Text = classement_predictions(pred_clf_textmining)
-    total_pred.inception = classement_predictions(pred_clf_inception)
-    total_pred.SVM_inception = classement_predictions(pred_svm_inception)
-    print(total_pred)
+        total_pred.Text = classement_predictions(pred_clf_textmining)
+        total_pred.inception = classement_predictions(pre_pred_clf_inception)
+        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
+    return total_pred
+
+def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+            new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
+            pca = pca_pre_svm):
+    pred=prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
+            new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
+            pca = pca)
+    if(len(pred.columns)==3):
+        resultats=pd.DataFrame(columns=['Best Predictions'],
+                            index=['Top 1', 'Top 2', 'Top 3'])
+        Top1f=choice_matrix[str(pred.Text[0])][pred.SVM_inception[0]]
+        if(pred.Text[0]!=pred.SVM_inception[0]):
+            if(Top1f!=classe[pred.Text[0]]):
+                 Top2f=classe[pred.Text[0]]
+            else:
+                Top2f=classe[pred.SVM_inception[0]]
+            Top2Text=classe[pred.Text[1]]
+            Top2SVM=[pred.SVM_inception[1]]
+            if(Top2Text!=Top1f and Top2Text!=Top2f):
+                if(Top2SVM!=Top1f and Top2SVM!=Top2f):
+                    Top3f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
+                else:
+                    Top3f=Top2Text
+            else:
+                if(Top2SVM!=Top1f and Top2SVM!=Top2f):
+                    Top3f=Top2SVM
+                else:
+                    Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
+        else:
+            Top2f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
+            if(pred.Text[1]!=pred.SVM_inception[1]):
+                if(Top2f!=classe[pred.Text[1]]):
+                    Top3f=classe[pred.Text[1]]
+                else:
+                    Top3f=classe[pred.SVM_inception[1]]
+            else:
+                Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
+        resultats["Best Predictions"][0]=Top1f
+        resultats["Best Predictions"][1]=Top2f
+        resultats["Best Predictions"][2]=Top3f
+        return resultats
+
+
 
 
 
