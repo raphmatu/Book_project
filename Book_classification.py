@@ -1,6 +1,4 @@
-
-
-## The objective of the program is to categorize books according to their cover.
+# The objective of the program is to categorize books according to their cover.
 
 ## We used a dataset available at this address :
 ## https://github.com/uchidalab/book-dataset
@@ -23,7 +21,12 @@
 ## covers variablity. We choose to re-train the last 100 layers of the new
 ## inception model. The others were pre-trained with imageNet data.
 
-## Text mining...................
+## ## Text mining's goal is to extract text from each image of the datasets,
+## and then classify covers with the extracted text.
+## Once the text extracted, we do some transformation on it.
+## We retrieve the words from text which do not contain information (with stop_words)
+## and then we use only the stemming part of each word left (with EnglishStemmer).
+## And once our text transformation done, we use a MultinomialNB classifier for the prediction.
 
 
 
@@ -58,8 +61,9 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from time import time
-from sklearn.svm import SVC
+from joblib import load, dump
 import matplotlib.pylab as plt
+from IPython.display import clear_output
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -67,8 +71,15 @@ from nltk.stem.snowball import EnglishStemmer
 nltk.download('punkt')
 nltk.download('stopwords')
 
+from bokeh.plotting import figure
+from bokeh.models.tools import HoverTool
+from bokeh.models import ColumnDataSource
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.io import push_notebook,output_notebook, show
+output_notebook()
+
+from sklearn.svm import SVC
 from sklearn.externals import joblib
-from joblib import load, dump
 from sklearn.decomposition import PCA
 from sklearn.ensemble import VotingClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -92,9 +103,212 @@ from keras_applications.inception_v3 import InceptionV3, preprocess_input
 # To use pytesseract with Windows OS (Filepath to tesseract-data)
 pytesseract.pytesseract.tesseract_cmd='C:/Program Files (x86)/Tesseract-OCR/tesseract'
 
+# To use pytesseract with Mac OS type the command pip install pytesseract on your terminal
+
+
+#######################################################
+############ PRE-TRAINED MODEL LOADING ################
+#######################################################
+
+
+## pre-trained model loading
+
+if os.path.isfile(work_dir + 'new_inception.json') == True and \
+   os.path.isfile(work_dir + 'new_inception.h5') == True:
+
+    print("New_inception model loading...")
+    json_file = open(work_dir + "new_inception.json", 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    new_inception = model_from_json(loaded_model_json)
+    new_inception.load_weights(work_dir + "new_inception.h5")
+    print("New_inception model loaded")
+else:
+    print("New_inception model can not be loaded, please check the file name or the filepath")
+
+
+if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
+   os.path.isfile(work_dir + 'pca_pre_SVM') == True:
+    print('SVM_new_inception model loading...')
+    pca_pre_svm = load(work_dir + 'pca_pre_SVM')
+    clf_SVM_new_inception = load(work_dir + 'SVM_new_inception')
+    print("SVM_new_inception model loaded")
+else:
+    print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
+
+
+if os.path.isfile(work_dir + 'clf_textmining') == True and \
+   os.path.isfile(work_dir + 'stopwords') == True and \
+   os.path.isfile(work_dir + 'countvectorizer') == True and \
+   os.path.isfile(work_dir + 'tfidf_transformer') == True:
+    print('Text Mining model loading...')
+
+    stop_words=load(work_dir + "stopwords")
+    countv=load(work_dir + "countvectorizer")
+    tformer=joblib.load(work_dir + "tfidf_transformer")
+    clf_TextMining=joblib.load(work_dir + "clf_textmining")
+
+    print("Text Mining model loaded")
+else:
+    print("Text Mining model can not be loaded, please check the file name or the filepath")
+
+Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
+Choice_matrix_img=pd.read_csv("Desktop/Books/Choice_matrix_img.csv", sep=";",index_col=0)
+
+#######################################################
+####################### VARIABLES #####################
+#######################################################
+
+##  3 data sets were available :
+## - Data set Train ==> 51 300 images
+## - Data set test ==> 5 700 images
+## - Data set Final ==> 207 000 images where we removed the 57 000 images of train and test
+
+
+## Loading of dataframe train and test.
+df_train = pd.read_csv(work_dir+"book30-listing-train.csv",engine = "python", header = None)
+df_test = pd.read_csv(work_dir+"book30-listing-test.csv",engine = "python", header = None)
+df_list = pd.read_csv(work_dir+"book32-listing.csv",engine = "python", header = None)
+
+Col_names=["Amazon_index","Filename","Image_url","Title","Author","Category_id","Category"]
+df_train.columns=Col_names
+df_test.columns=Col_names
+df_list.columns=Col_names
+
+## Filepath of database Train and test
+train_path = work_dir+'Database_train'
+test_path = work_dir+'Database_test'
+list_path=work_dir+"BigData"
+## Adding filepath column to dataframes
+filepath=list()
+for i in range(len(df_test.Filename)):
+    filepath.append(test_path+"/"+df_test.Category[i]+"/"+df_test.Filename[i])
+df_test["Filepath"]=filepath
+
+filepath=list()
+for i in range(len(df_train.Filename)):
+    filepath.append(train_path+"/"+df_train.Category[i]+"/"+df_train.Filename[i])
+df_train["Filepath"]=filepath
+
+filepath=list()
+for i in range(len(df_list.Filename)):
+    filepath.append(list_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
+df_list["Filepath"]=filepath
+
+## storage of category names
+cat = pd.DataFrame(df_train['Category'].value_counts())
+classe=['Arts & Photography',
+ 'Biographies & Memoirs',
+ 'Business & Money',
+ 'Calendars',
+ "Children's Books",
+ 'Comics & Graphic Novels',
+ 'Computers & Technology',
+ 'Cookbooks, Food & Wine',
+ 'Crafts, Hobbies & Home',
+ 'Christian Books & Bibles',
+ 'Engineering & Transportation',
+ 'Health, Fitness & Dieting',
+ 'History',
+ 'Humor & Entertainment',
+ 'Law',
+ 'Literature & Fiction',
+ 'Medical Books',
+ 'Mystery, Thriller & Suspense',
+ 'Parenting & Relationships',
+ 'Politics & Social Sciences',
+ 'Reference',
+ 'Religion & Spirituality',
+ 'Romance',
+ 'Science & Math',
+ 'Science Fiction & Fantasy',
+ 'Self-Help',
+ 'Sports & Outdoors',
+ 'Teen & Young Adult',
+ 'Test Preparation',
+ 'Travel']
+
+
+
              #######################################################
              #################### FUNCTIONS ########################
              #######################################################
+
+########################## LeNet model  ############################
+
+def LeNet_model(df_train=df_train, df_test=df_test):
+
+    # Create input array for CNN learning
+    def generate_image_data(images,size=28):
+       tensor=list()
+
+    # images = list of all images filepath ex: test_data.path
+    # size = int, wanted picture size
+
+       for i in range(len(images)):
+    # Image reading
+           img=plt.imread(images[i])
+    # Image resizing
+           resized=cv2.resize(img,dsize=(size,size),interpolation=cv2.INTER_CUBIC)
+    # Detecting whether image is in greyscale
+           if(len(resized.shape)==2):
+               resized=grey2rgb(resized)
+    # Detecting whether image is in rgba
+           if(resized.shape[2]==4):
+               resized=(rgba2rgb(resized)*255).astype("int")
+    # Adding resized image to the list
+           tensor.append(resized)
+    # Transforming list of images into a single array
+       tensor=np.asarray(tensor)
+       return tensor
+
+
+    # Generating Train/Test datasets
+    Xtest=generate_image_data(df_test.path,size=28)
+    Xtrain=generate_image_data(df_train.path,size=28)
+    ytrain=df_train.Category_id
+    ytest=df_test.Category_id
+
+    ytest=np_utils.to_categorical(df_test.Category_id)
+    ytrain=np_utils.to_categorical(df_train.Category_id)
+
+
+    ###LeNet model
+    model = Sequential()
+    model.add(Conv2D(filters=30, kernel_size=(5,5), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model = Sequential()
+    model.add(Conv2D(filters=30, kernel_size=(5,5), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+
+    model.add(Conv2D(filters=15, kernel_size=(3,3), border_mode='valid', input_shape=(28,28,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Dropout(0.3))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+
+    model.add(Dense(40, activation='relu'))
+    model.add(Dense(30, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+
+    #model training
+    model.fit(Xtrain, ytrain, validation_data=(Xtest, ytest),epochs=50, batch_size=300, verbose=1,shuffle=True)
+
+    #prediction
+    test_pred = model.predict(Xtest)
+    print(test_pred)
+
+    pred = np.around(test_pred,decimals=8).argmax(axis=1)
+    scores = model.evaluate(Xtest, ytest, verbose=2)
+    print("Perte: %.2f Erreur: %.2f%%" % (scores[0], 100-scores[1]*100))
+    y = ytest.argmax(axis=1)
+
+    print(y.shape)
+    print(pred.shape)
 
 
 ################### Text preprocessing functions ###################
@@ -131,7 +345,7 @@ def Final_textreader(filepath):
         Text=list(itertools.chain.from_iterable(Text))
         Text=list(set(Text))
         Corpus.append(" ".join(Text))
-        #print("Images traitées : ",i)
+        #print("Images trait�es : ",i)
     #t1=time()-t0
     #print(t1)
     return Corpus
@@ -339,7 +553,7 @@ def inception_one_image(image_path):
     predictions = new_inception.predict(x)
     return predictions
 
-def new_inception_training(train_path, test_path, classe, save = False):
+def new_inception_training(train_path, test_path, classe=classe, save = False):
     ## Main function of new_inception model training
     ## Inception model is customed by removing last layer and adding 3 layers
     ## The last 100 layers are set as trainable
@@ -391,7 +605,7 @@ def new_inception_training(train_path, test_path, classe, save = False):
 
     return new_inception
 
-def SVM_new_inception(df_train, df_test, classe, save=False):
+def SVM_new_inception(df_train, df_test, classe=classe, save=False):
     ## First, PCA is used to reduced dimension of extracted features. We keep
     ## 90% of explained variability with 229 features.
     ## Then, SVM model is trained on reduced features to predict labels of images.
@@ -451,6 +665,9 @@ def SVM_new_inception(df_train, df_test, classe, save=False):
     return grid_clf, pred_proba
 
 
+################### Analysis functions ###################
+
+
 def top_table(pred, ytest, label):
     ## datatable of top_results
     yt=ytest
@@ -466,12 +683,12 @@ def top_table(pred, ytest, label):
     valid_top3 = 0
     valid_top5 = 0
 
-    for i in range(pred.shape[1]):# récupération des 5 meilleures prédictions
+    for i in range(pred.shape[1]):# r�cup�ration des 5 meilleures pr�dictions
         maximum = pred[i].sort_values(ascending = False)
         top.loc[i] = maximum.index[0:5]
 
 
-    for k in range(len(label)):# stats sur les top1 top3 top5 (à optimiser)
+    for k in range(len(label)):# stats sur les top1 top3 top5 (� optimiser)
         liste_index = yt.index[yt==k]
         for i in liste_index:
             if test_labels_df.loc[k, 'cat_id'] == top.loc[i, 'top1']:
@@ -491,175 +708,46 @@ def top_table(pred, ytest, label):
         valid_top1 = 0
         valid_top3 = 0
         valid_top5 = 0
-        
+
     average['top1'] = np.mean(resultats.top1)
     average['top3'] = np.mean(resultats.top3)
     average['top5'] = np.mean(resultats.top5)
     resultats = pd.concat([resultats,average], axis = 0)
-    resultats.to_csv(work_dir + "resultats_prédiction.csv")
+    resultats.to_csv(work_dir + "resultats_pr�diction.csv")
     print(resultats)
     return resultats
 
-def classement_predictions(predictions):
+def classement_predictions(predictions, classe=classe):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
-    return maximum.index[0:3]
+    max_3 = maximum.index[0:3]
+    classe_3 = []
+    for i in max_3:
+        classe_3.append(classe[i])
+    label = []
+    for i in maximum.index:
+        label.append(classe[i])
 
+    return classe_3, maximum, label,
 
-
-#######################################################
-####################### VARIABLES #####################
-#######################################################
-
-##  3 data sets were available :
-## - Data set Train ==> 51 300 images
-## - Data set test ==> 5 700 images
-## - Data set Final ==> 207 000 images where we removed the 57 000 images of train and test
-
-
-## Loading of dataframe train and test.
-df_train = pd.read_csv(work_dir+"book30-listing-train.csv",engine = "python", header = None)
-df_test = pd.read_csv(work_dir+"book30-listing-test.csv",engine = "python", header = None)
-df_list = pd.read_csv(work_dir+"book32-listing.csv",engine = "python", header = None)
-
-Col_names=["Amazon_index","Filename","Image_url","Title","Author","Category_id","Category"]
-df_train.columns=Col_names
-df_test.columns=Col_names
-df_list.columns=Col_names
-
-## Filepath of database Train and test
-train_path = work_dir+'Database_train'
-test_path = work_dir+'Database_test'
-list_path=work_dir+"BigData"
-## Adding filepath column to dataframes
-filepath=list()
-for i in range(len(df_test.Filename)):
-    filepath.append(test_path+"/"+df_test.Category[i]+"/"+df_test.Filename[i])
-df_test["Filepath"]=filepath
-
-filepath=list()
-for i in range(len(df_train.Filename)):
-    filepath.append(train_path+"/"+df_train.Category[i]+"/"+df_train.Filename[i])
-df_train["Filepath"]=filepath
-
-filepath=list()
-for i in range(len(df_list.Filename)):
-    filepath.append(list_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
-df_list["Filepath"]=filepath
-
-## storage of category names
-cat = pd.DataFrame(df_train['Category'].value_counts())
-classe=['Arts & Photography',
- 'Biographies & Memoirs',
- 'Business & Money',
- 'Calendars',
- "Children's Books",
- 'Comics & Graphic Novels',
- 'Computers & Technology',
- 'Cookbooks, Food & Wine',
- 'Crafts, Hobbies & Home',
- 'Christian Books & Bibles',
- 'Engineering & Transportation',
- 'Health, Fitness & Dieting',
- 'History',
- 'Humor & Entertainment',
- 'Law',
- 'Literature & Fiction',
- 'Medical Books',
- 'Mystery, Thriller & Suspense',
- 'Parenting & Relationships',
- 'Politics & Social Sciences',
- 'Reference',
- 'Religion & Spirituality',
- 'Romance',
- 'Science & Math',
- 'Science Fiction & Fantasy',
- 'Self-Help',
- 'Sports & Outdoors',
- 'Teen & Young Adult',
- 'Test Preparation',
- 'Travel']
-
-             #######################################################
-             ################### MAIN CODE #########################
-             #######################################################
-
-## pre-trained model loading
-
-if os.path.isfile(work_dir + 'new_inception.json') == True and \
-   os.path.isfile(work_dir + 'new_inception.h5') == True:
-
-    print("New_inception model loading...")
-    json_file = open(work_dir + "new_inception.json", 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    new_inception = model_from_json(loaded_model_json)
-    new_inception.load_weights(work_dir + "new_inception.h5")
-    print("New_inception model loaded")
-else:
-    print("New_inception model can not be loaded, please check the file name or the filepath")
-
-## Import de mon modèle de Deep learning ##
-
-if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
-   os.path.isfile(work_dir + 'pca_pre_SVM') == True:
-    print('SVM_new_inception model loading...')
-    pca_pre_svm = load(work_dir + 'pca_pre_SVM')
-    clf_SVM_new_inception = load(work_dir + 'SVM_new_inception')
-    print("SVM_new_inception model loaded")
-else:
-    print("SVM_New_inception model can not be loaded, please check the file name or the filepath")
-
-
-if os.path.isfile(work_dir + 'clf_textmining') == True and \
-   os.path.isfile(work_dir + 'stopwords') == True and \
-   os.path.isfile(work_dir + 'countvectorizer') == True and \
-   os.path.isfile(work_dir + 'tfidf_transformer') == True:
-    print('Text Mining model loading...')
-
-    stop_words=load(work_dir + "stopwords")
-    countv=load(work_dir + "countvectorizer")
-    tformer=joblib.load(work_dir + "tfidf_transformer")
-    clf_TextMining=joblib.load(work_dir + "clf_textmining")
-
-    print("Text Mining model loaded")
-else:
-    print("Text Mining model can not be loaded, please check the file name or the filepath")
-
-Choice_matrix=pd.read_csv("Desktop/Books/Choice_matrix.csv", sep=";",index_col=0)
-Choice_matrix_img=pd.read_csv("Desktop/Books/Choice_matrix_img.csv", sep=";",index_col=0)
-## Here we present our results after each training model. We present top1, top3
-## and top5 results.
-
-
-
-
-
-
-
-
-
-
-print ('If you want to test the classifier, please enter image filepath to function prediction() ')
-
-def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
 
     image_path = list([img])
     text_img = Final_textreader(image_path)
-    pre_pred_clf_inception = inception_one_image(img)
+    pred_clf_inception = inception_one_image(img)
     #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
 
     features_img = extract_features_keras(image_path)
     features_img_pca = pca.transform(features_img)
-    pred_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
+    pred_clf_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
     if text_img == ['']:
         print('Text Mining classifier did not find any text on the image')
-        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+        total_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
                             columns=['inception', 'SVM_inception'])
-        total_pred.inception = classement_predictions(pre_pred_clf_inception)
-        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
+        total_pred.inception, proba_clf_inception, label_proba_clf_inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
     else :
         print('Some text has been found on the image')
         df_text_img=Corpus_dropna(text_img)
@@ -669,122 +757,124 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
 
         pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
 
-    
-
-        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+        total_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
                             columns=['Text', 'inception', 'SVM_inception'])
 
-        total_pred.Text = classement_predictions(pred_clf_textmining)
-        total_pred.inception = classement_predictions(pre_pred_clf_inception)
-        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
+        total_pred.Text, proba_textmining, label_proba_textmining = classement_predictions(pred_clf_textmining)
+        total_pred.inception, proba_clf_inception, label_proba_clf_inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+        affichage_proba(proba_textmining=proba_textmining, proba_clf_inception=proba_clf_inception,
+                        proba_clf_svm_inception = proba_clf_svm_inception, label_proba_textmining = label_proba_textmining,
+                          label_proba_clf_inception = label_proba_clf_inception, label_proba_clf_svm_inception= label_proba_clf_svm_inception)
     return total_pred
 
-def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+
+def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_inception,
+                    label_proba_textmining, label_proba_clf_inception, label_proba_clf_svm_inception):
+
+    proba_et_label_text = pd.DataFrame({'proba_Text' : proba_textmining[0],'label_Text' : label_proba_textmining})
+    proba_et_label_inception = pd.DataFrame({'proba_inception' : proba_clf_inception[0],'label_inception' : label_proba_clf_inception})
+    proba_et_label_svm_inception = pd.DataFrame({'proba_SVM_inception' : proba_clf_svm_inception[0],'label_SVM_inception' : label_proba_clf_svm_inception})
+
+    text = ColumnDataSource(proba_et_label_text)
+    inception = ColumnDataSource(proba_et_label_inception)
+    svm_inception = ColumnDataSource(proba_et_label_svm_inception)
+
+    hover_text = HoverTool(tooltips=[("probabilit� ", "@proba_Text")])
+    hover_inception = HoverTool(tooltips=[("probabilit� ", "@proba_inception")])
+    hover_SVM_inception = HoverTool(tooltips=[("probabilit� ", "@proba_SVM_inception")])
+
+    fig1 = figure(plot_width =1000, plot_height=400, x_range = label_proba_textmining)
+    fig1.vbar(x='label_Text', top= 'proba_Text', source = text, width=0.5, fill_color = '#45A7E2', line_color = '#45A7E2')
+    fig1.xaxis.major_label_orientation = 0.7
+    fig1.add_tools(hover_text)
+    tab1 = Panel(child = fig1, title='Text_mining_proba')
+
+    fig2 = figure(plot_width =1000, plot_height=400, x_range = label_proba_clf_inception)
+    fig2.vbar(x='label_inception', top= 'proba_inception', source = inception, width=0.5, fill_color = '#E74C3C', line_color = '#E74C3C')
+    fig2.xaxis.major_label_orientation = 0.7
+    fig2.add_tools(hover_inception)
+    tab2 = Panel(child = fig2, title='Inception_proba')
+
+    fig3 = figure(plot_width =1000, plot_height=400, x_range = label_proba_clf_svm_inception)
+    fig3.vbar(x='label_SVM_inception', top= 'proba_SVM_inception', source = svm_inception, width=0.5, fill_color = '#2ECC71', line_color = '#2ECC71')
+    fig3.xaxis.major_label_orientation = 0.7
+    fig3.add_tools(hover_SVM_inception)
+    tab3 = Panel(child = fig3, title='SVM_inception_proba')
+
+
+    onglet = Tabs(tabs=[tab1,tab2,tab3])
+    show(onglet)
+
+
+
+             #######################################################
+             ################### MAIN CODE #########################
+             #######################################################
+
+clear_output()
+print('******************************************************************')
+print('******************************************************************')
+print('***************** Welcome in a Book Classifier *******************')
+print('********* You can upload a book cover in the function ************')
+print('******************************************************************')
+print('**************** prediction() ** or ** best_pred()****************')
+print('******************************************************************')
+print('************ if you want to see our statistics on ****************')
+print('******************************************************************')
+print('***************** -- Inception CNN model *************************')
+print('**************************** or **********************************')
+print('******************* -- Text Mining model *************************')
+print('******************************************************************')
+print('************ use see_statistics() without any arguments **********')
+print('******************************************************************')
+print('********************** Please enjoy ! *****************************')
+print('******************************************************************')
+
+
+
+def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
     pred=prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca)
-    resultats=pd.DataFrame(columns=['Best Predictions'],
-                            index=['Top 1', 'Top 2', 'Top 3'])
-    #Si il y a du texte
     if(len(pred.columns)==3):
-        #Top 1 = prédiction la plus fiable parmi les top1 de text et svm
+        resultats=pd.DataFrame(columns=['Best Predictions'],
+                            index=['Top 1', 'Top 2', 'Top 3'])
         Top1f=choice_matrix[str(pred.Text[0])][pred.SVM_inception[0]]
-        #Si les deux classifieurs ne prédisent pas la même chose
         if(pred.Text[0]!=pred.SVM_inception[0]):
-            #Top 2 = top 1 du second classifieur
             if(Top1f!=classe[pred.Text[0]]):
                  Top2f=classe[pred.Text[0]]
             else:
                 Top2f=classe[pred.SVM_inception[0]]
             Top2Text=classe[pred.Text[1]]
             Top2SVM=[pred.SVM_inception[1]]
-            # Si la prediction n°2 du clf texte ne correspond ni au top1 ou au top2 
             if(Top2Text!=Top1f and Top2Text!=Top2f):
-                # Et que la prédiction n°2 du classifieur svm non plus
                 if(Top2SVM!=Top1f and Top2SVM!=Top2f):
-                    # Le top 3 est la prédiction la plus fiable parmi les secondes prédictions de chaque clf
                     Top3f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
-                # Si seule la prédiction 2 du clf texte ne fait pas partie des top 1 et 2
                 else:
                     Top3f=Top2Text
-            # Si la prédiction 2 du clf texte est déjà dans le top1 ou 2
             else:
-                # Mais pas la prédiction 2 du clf svm
                 if(Top2SVM!=Top1f and Top2SVM!=Top2f):
                     Top3f=Top2SVM
-                # Si les prédictions n°2 de chaque clf sont déjà dans le top 1 et 2
                 else:
-                    # top 3 = la meilleure prédiction parmi les prédictions n°3 de chaque clf
                     Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
-        #Si les clf texte et svm prédisent la même classe
         else:
-            # top2= la prédiction la plus fiable parmi les prédictions n°2 de chaque clf
             Top2f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
-            # Si ces prédictions ne sont pas les mêmes
             if(pred.Text[1]!=pred.SVM_inception[1]):
-                # top 3 = prédiction n°2 du second clf
                 if(Top2f!=classe[pred.Text[1]]):
                     Top3f=classe[pred.Text[1]]
                 else:
                     Top3f=classe[pred.SVM_inception[1]]
-            # Si les clf prédisent le même top 1 et top 2
             else:
-                # top 3 = la prédiction la plus fiable parmi les prédictions n°3
                 Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
-    # Si pas de texte détecté
-    else:
-        # Top 1 = la prédiction la plus fiable entre le clf svm et le clf inception
-        Top1f=choice_matrix_img[str(pred.SVM_inception[0])][pred.inception[0]]
-        #Si les deux classifieurs ne prédisent pas la même chose
-        if(pred.SVM_inception[0]!=pred.inception[0]):
-            #Top 2 = top 1 du second classifieur
-            if(Top1f!=classe[pred.SVM_inception[0]]):
-                Top2f=classe[pred.SVM_inception[0]]
-            else:
-                Top2f=classe[pred.inception[0]]
-            Top2Inc=classe[pred.inception[1]]
-            Top2SVM=classe[pred.SVM_inception[1]]
-             # Si la prediction n°2 du clf svm ne correspond ni au top1 ou au top2 
-            if(Top2SVM!=Top1f and Top2SVM!=Top2f):
-                 # Et que la prédiction n°2 du classifieur inception non plus
-                if(Top2Inc!=Top1f and Top2Inc!=Top2f):
-                    # Le top 3 est la prédiction la plus fiable parmi les secondes prédictions de chaque clf
-                    Top3f=choice_matrix_img[str(pred.SVM_inception[1])][pred.inception[1]]
-                # Si seule la prédiction 2 du clf svm ne fait pas partie des top 1 et 2
-                else:
-                    Top3f=Top2SVM
-            # Si la prédiction 2 du clf svm est déjà dans le top1 ou 2
-            else:
-                # Mais pas la prédiction 2 du clf inception
-                if(Top2Inc!=Top1f and Top2Inc!=Top2f):
-                    Top3f=Top2Inc
-                # Si les prédictions n°2 de chaque clf sont déjà dans le top 1 et 2
-                else:
-                    # top 3 = la meilleure prédiction parmi les prédictions n°3 de chaque clf
-                    Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]
-        #Si les clf svm et inception prédisent la même classe
-        else:
-            # top2= la prédiction la plus fiable parmi les prédictions n°2 de chaque clf
-            Top2f=choice_matrix[str(pred.SVM_inception[1])][pred.inception[1]]
-            # Si ces prédictions ne sont pas les mêmes
-            if(pred.SVM_inception[1]!=pred.inception[1]):
-                # top 3 = prédiction n°2 du second clf
-                if(Top2f!=classe[pred.SVM_inception[1]]):
-                    Top3f=classe[pred.SVM_inception[1]]
-                else:
-                    Top3f=classe[pred.inception[1]]
-            # Si les clf prédisent le même top 1 et top 2
-            else:
-                # top 3 = la prédiction la plus fiable parmi les prédictions n°3 de chaque clf
-                Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]                  
-    resultats["Best Predictions"][0]=Top1f
-    resultats["Best Predictions"][1]=Top2f
-    resultats["Best Predictions"][2]=Top3f
-    return resultats       
-        
+        resultats["Best Predictions"][0]=Top1f
+        resultats["Best Predictions"][1]=Top2f
+        resultats["Best Predictions"][2]=Top3f
+        return resultats
 
 
 
-    fin
+
+## end
