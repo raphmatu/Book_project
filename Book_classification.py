@@ -747,7 +747,7 @@ def prediction(img, classe=classe, stopwords= stop_words, clf_Text = clf_TextMin
         total_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
                             columns=['inception', 'SVM_inception'])
         total_pred_best_pred = pd.DataFrame(index=['Top 1', 'Top 2', 'Top 3'],
-                            columns=['Text', 'inception', 'SVM_inception'])
+                            columns=['inception', 'SVM_inception'])
         total_pred.inception, proba_clf_inception, label_proba_clf_inception, total_pred_best_pred.inception = classement_predictions(pred_clf_inception)
         total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception, total_pred_best_pred.SVM_inception = classement_predictions(pred_clf_svm_inception)
 
@@ -844,49 +844,110 @@ print('********************** Please enjoy ! *****************************')
 print('******************************************************************')
 
 
-
-def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca_pre_svm):
-    pred_no_use, pred =prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
+    nope,pred=prediction(img, classe=classe, stopwords=stopwords, clf_Text = clf_Text,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
             pca = pca)
-    if(len(pred.columns)==3):
-        resultats=pd.DataFrame(columns=['Best Predictions'],
+    resultats=pd.DataFrame(columns=['Best Predictions'],
                             index=['Top 1', 'Top 2', 'Top 3'])
+    #Si il y a du texte
+    if(len(pred.columns)==3):
+        #Top 1 = prédiction la plus fiable parmi les top1 de text et svm
         Top1f=choice_matrix[str(pred.Text[0])][pred.SVM_inception[0]]
+        #Si les deux classifieurs ne prédisent pas la même chose
         if(pred.Text[0]!=pred.SVM_inception[0]):
+            #Top 2 = top 1 du second classifieur
             if(Top1f!=classe[pred.Text[0]]):
                  Top2f=classe[pred.Text[0]]
             else:
                 Top2f=classe[pred.SVM_inception[0]]
             Top2Text=classe[pred.Text[1]]
             Top2SVM=[pred.SVM_inception[1]]
+            # Si la prediction n°2 du clf texte ne correspond ni au top1 ou au top2 
             if(Top2Text!=Top1f and Top2Text!=Top2f):
+                # Et que la prédiction n°2 du classifieur svm non plus
                 if(Top2SVM!=Top1f and Top2SVM!=Top2f):
+                    # Le top 3 est la prédiction la plus fiable parmi les secondes prédictions de chaque clf
                     Top3f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
+                # Si seule la prédiction 2 du clf texte ne fait pas partie des top 1 et 2
                 else:
                     Top3f=Top2Text
+            # Si la prédiction 2 du clf texte est déjà dans le top1 ou 2
             else:
+                # Mais pas la prédiction 2 du clf svm
                 if(Top2SVM!=Top1f and Top2SVM!=Top2f):
                     Top3f=Top2SVM
+                # Si les prédictions n°2 de chaque clf sont déjà dans le top 1 et 2
                 else:
+                    # top 3 = la meilleure prédiction parmi les prédictions n°3 de chaque clf
                     Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
+        #Si les clf texte et svm prédisent la même classe
         else:
+            # top2= la prédiction la plus fiable parmi les prédictions n°2 de chaque clf
             Top2f=choice_matrix[str(pred.Text[1])][pred.SVM_inception[1]]
+            # Si ces prédictions ne sont pas les mêmes
             if(pred.Text[1]!=pred.SVM_inception[1]):
+                # top 3 = prédiction n°2 du second clf
                 if(Top2f!=classe[pred.Text[1]]):
                     Top3f=classe[pred.Text[1]]
                 else:
                     Top3f=classe[pred.SVM_inception[1]]
+            # Si les clf prédisent le même top 1 et top 2
             else:
+                # top 3 = la prédiction la plus fiable parmi les prédictions n°3
                 Top3f=choice_matrix[str(pred.Text[2])][pred.SVM_inception[2]]
-        resultats["Best Predictions"][0]=Top1f
-        resultats["Best Predictions"][1]=Top2f
-        resultats["Best Predictions"][2]=Top3f
-        return resultats
-
-
+    # Si pas de texte détecté
+    else:
+        # Top 1 = la prédiction la plus fiable entre le clf svm et le clf inception
+        Top1f=choice_matrix_img[str(pred.SVM_inception[0])][pred.inception[0]]
+        #Si les deux classifieurs ne prédisent pas la même chose
+        if(pred.SVM_inception[0]!=pred.inception[0]):
+            #Top 2 = top 1 du second classifieur
+            if(Top1f!=classe[pred.SVM_inception[0]]):
+                Top2f=classe[pred.SVM_inception[0]]
+            else:
+                Top2f=classe[pred.inception[0]]
+            Top2Inc=classe[pred.inception[1]]
+            Top2SVM=classe[pred.SVM_inception[1]]
+             # Si la prediction n°2 du clf svm ne correspond ni au top1 ou au top2 
+            if(Top2SVM!=Top1f and Top2SVM!=Top2f):
+                 # Et que la prédiction n°2 du classifieur inception non plus
+                if(Top2Inc!=Top1f and Top2Inc!=Top2f):
+                    # Le top 3 est la prédiction la plus fiable parmi les secondes prédictions de chaque clf
+                    Top3f=choice_matrix_img[str(pred.SVM_inception[1])][pred.inception[1]]
+                # Si seule la prédiction 2 du clf svm ne fait pas partie des top 1 et 2
+                else:
+                    Top3f=Top2SVM
+            # Si la prédiction 2 du clf svm est déjà dans le top1 ou 2
+            else:
+                # Mais pas la prédiction 2 du clf inception
+                if(Top2Inc!=Top1f and Top2Inc!=Top2f):
+                    Top3f=Top2Inc
+                # Si les prédictions n°2 de chaque clf sont déjà dans le top 1 et 2
+                else:
+                    # top 3 = la meilleure prédiction parmi les prédictions n°3 de chaque clf
+                    Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]
+        #Si les clf svm et inception prédisent la même classe
+        else:
+            # top2= la prédiction la plus fiable parmi les prédictions n°2 de chaque clf
+            Top2f=choice_matrix[str(pred.SVM_inception[1])][pred.inception[1]]
+            # Si ces prédictions ne sont pas les mêmes
+            if(pred.SVM_inception[1]!=pred.inception[1]):
+                # top 3 = prédiction n°2 du second clf
+                if(Top2f!=classe[pred.SVM_inception[1]]):
+                    Top3f=classe[pred.SVM_inception[1]]
+                else:
+                    Top3f=classe[pred.inception[1]]
+            # Si les clf prédisent le même top 1 et top 2
+            else:
+                # top 3 = la prédiction la plus fiable parmi les prédictions n°3 de chaque clf
+                Top3f=choice_matrix_img[str(pred.SVM_inception[2])][pred.inception[2]]                  
+    resultats["Best Predictions"][0]=Top1f
+    resultats["Best Predictions"][1]=Top2f
+    resultats["Best Predictions"][2]=Top3f
+    return resultats
 
 
 ## end
