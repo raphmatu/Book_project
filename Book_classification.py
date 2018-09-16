@@ -72,6 +72,7 @@ nltk.download('punkt')
 nltk.download('stopwords')
 
 from bokeh.plotting import figure
+from bokeh.transform import dodge
 from bokeh.models.tools import HoverTool
 from bokeh.models import ColumnDataSource
 from bokeh.models.widgets import Panel, Tabs
@@ -923,6 +924,26 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
     resultats["Best Predictions"][2]=Top3f
     return resultats
 
+def see_statistics():
+    resultats = pd.read_csv(work_dir + "resultats_finaux.csv", sep=';')
+
+    category = resultats.category
+
+    source = ColumnDataSource(resultats)
+
+    hover = HoverTool(tooltips=[("prédiction_inception", "@Inception"),("prédictions_SVM_inception", "@SVM"),("prédictions_Text_Mining", "@Text")])
+
+    fig = figure(plot_width = 1500, plot_height = 400, x_range = list(category))
+    fig.vbar(x=dodge('category', -0.27, range = fig.x_range), top = 'Inception', source=source,width = 0.2, color = '#718dbf', legend = 'Inception model')
+    fig.vbar(x=dodge('category',  0.0, range = fig.x_range), top = 'SVM', source = source, width = 0.2, color = '#e84d60', legend = 'SVM_inception')
+    fig.vbar(x=dodge('category',  0.27, range = fig.x_range), top = 'Text', source = source, width = 0.2, color = '#2ECC71', legend = 'Text Mining')
+
+    fig.x_range.range_padding = 0.1
+    fig.xgrid.grid_line_color = None
+    fig.legend.location = 'top_left'
+    fig.xaxis.major_label_orientation = 0.7
+    fig.add_tools(hover)
+    show(fig)
 
              #######################################################
              ################### MAIN CODE #########################
