@@ -449,6 +449,9 @@ def SVM_new_inception(df_train, df_test, classe, save=False):
     return grid_clf, pred_proba
 
 
+################### Analysis functions ###################
+
+
 def top_table(pred, ytest, label):
     ## datatable of top_results
     yt=ytest
@@ -498,7 +501,7 @@ def top_table(pred, ytest, label):
     print(resultats)
     return resultats
 
-def classement_predictions(predictions):
+def classement_predictions(predictions, classe =classe):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
     max_3 = maximum.index[0:3]
@@ -506,7 +509,47 @@ def classement_predictions(predictions):
     for i in max_3:
         classe_3.append(classe[i])
 
-    return classe_3
+    return classe_3, maximum
+
+def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
+            new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
+            pca = pca_pre_svm):
+
+    image_path = list([img])
+    text_img = Final_textreader(image_path)
+    pred_clf_inception = inception_one_image(img)
+    #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
+
+    features_img = extract_features_keras(image_path)
+    features_img_pca = pca.transform(features_img)
+    pred_clf_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
+    if text_img == ['']:
+        print('Text Mining classifier did not find any text on the image')
+        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+                            columns=['inception', 'SVM_inception'])
+        total_pred.inception = classement_predictions(pre_pred_clf_inception)
+        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
+    else :
+        print('Some text has been found on the image')
+        df_text_img=Corpus_dropna(text_img)
+        Filtered_text_img=text_processer(df_text_img.Text,stop_words=stop_words,stemmer=None)
+        Text_img_count=countv.transform(Filtered_text_img)
+        text_img_to_pred=tformer.transform(Text_img_count)
+
+        pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
+
+
+
+        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
+                            columns=['Text', 'inception', 'SVM_inception'])
+
+        total_pred.Text, proba_textmining = classement_predictions(pred_clf_textmining)
+        total_pred.inception, proba_clf_inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+    return total_pred
+
+
+
 
 
 
@@ -644,42 +687,7 @@ Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
 
 print ('If you want to test the classifier, please enter image filepath to function prediction() ')
 
-def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
-            new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
-            pca = pca_pre_svm):
 
-    image_path = list([img])
-    text_img = Final_textreader(image_path)
-    pre_pred_clf_inception = inception_one_image(img)
-    #pred_clf_inception = pre_pred_clf_inception.argmax(axis=1)
-
-    features_img = extract_features_keras(image_path)
-    features_img_pca = pca.transform(features_img)
-    pred_svm_inception = clf_SVM_new_inception.predict_proba(features_img_pca)
-    if text_img == ['']:
-        print('Text Mining classifier did not find any text on the image')
-        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
-                            columns=['inception', 'SVM_inception'])
-        total_pred.inception = classement_predictions(pre_pred_clf_inception)
-        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
-    else :
-        print('Some text has been found on the image')
-        df_text_img=Corpus_dropna(text_img)
-        Filtered_text_img=text_processer(df_text_img.Text,stop_words=stop_words,stemmer=None)
-        Text_img_count=countv.transform(Filtered_text_img)
-        text_img_to_pred=tformer.transform(Text_img_count)
-
-        pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
-
-
-
-        total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
-                            columns=['Text', 'inception', 'SVM_inception'])
-
-        total_pred.Text = classement_predictions(pred_clf_textmining)
-        total_pred.inception = classement_predictions(pre_pred_clf_inception)
-        total_pred.SVM_inception = classement_predictions(pred_svm_inception)
-    return total_pred
 
 def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
