@@ -379,7 +379,7 @@ def new_inception_training(train_path, test_path, classe, save = False):
     test_labels = test_batches.classes
     cm = confusion_matrix(test_labels, predictions.argmax(axis=1))
     plot_confusion_matrix(cm, classe)
-    top_table(predictions)
+    top_table(predictions, test_labels)
 
     ## model saving
     if save == true:
@@ -444,9 +444,10 @@ def SVM_new_inception(df_train, df_test, classe, save=False):
     pred_proba = grid_clf.predic_proba(features_test_pca) ## for top_table function
     pred = grid_clf.predict(features_test_pca) ## for confusion matrix
 
-    test_labels = test_batches.classes
     cm = confusion_matrix(labels_test, pred)
     plot_confusion_matrix(cm, classe)
+    top_table(pred, labels_test)
+
 
     return grid_clf, pred_proba
 
