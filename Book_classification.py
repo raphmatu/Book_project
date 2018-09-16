@@ -21,7 +21,12 @@
 ## covers variablity. We choose to re-train the last 100 layers of the new
 ## inception model. The others were pre-trained with imageNet data.
 
-## Text mining...................
+## ## Text mining's goal is to extract text from each image of the datasets,
+## and then classify covers with the extracted text.
+## Once the text extracted, we do some transformation on it.
+## We retrieve the words from text which do not contain information (with stop_words)
+## and then we use only the stemming part of each word left (with EnglishStemmer).
+## And once our text transformation done, we use a MultinomialNB classifier for the prediction.
 
 
 
@@ -97,6 +102,8 @@ from keras_applications.inception_v3 import InceptionV3, preprocess_input
 
 # To use pytesseract with Windows OS (Filepath to tesseract-data)
 pytesseract.pytesseract.tesseract_cmd='C:/Program Files (x86)/Tesseract-OCR/tesseract'
+
+# To use pytesseract with Mac OS type the command pip install pytesseract on your terminal
 
 
 #######################################################
