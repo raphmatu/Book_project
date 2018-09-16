@@ -65,6 +65,13 @@ from nltk.stem.snowball import EnglishStemmer
 nltk.download('punkt')
 nltk.download('stopwords')
 
+from bokeh.plotting import figure
+from bokeh.models.tools import HoverTool
+from bokeh.models import ColumnDataSource
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.io import push_notebook,output_notebook, show
+#output_notebook()
+
 from sklearn.externals import joblib
 from joblib import load, dump
 from sklearn.decomposition import PCA
@@ -89,6 +96,83 @@ from keras_applications.inception_v3 import InceptionV3, preprocess_input
 
 # To use pytesseract with Windows OS (Filepath to tesseract-data)
 pytesseract.pytesseract.tesseract_cmd='C:/Program Files (x86)/Tesseract-OCR/tesseract'
+
+
+
+#######################################################
+####################### VARIABLES #####################
+#######################################################
+
+##  3 data sets were available :
+## - Data set Train ==> 51 300 images
+## - Data set test ==> 5 700 images
+## - Data set Final ==> 207 000 images where we removed the 57 000 images of train and test
+
+
+## Loading of dataframe train and test.
+df_train = pd.read_csv(work_dir+"book30-listing-train.csv",engine = "python", header = None)
+df_test = pd.read_csv(work_dir+"book30-listing-test.csv",engine = "python", header = None)
+df_list = pd.read_csv(work_dir+"book32-listing.csv",engine = "python", header = None)
+
+Col_names=["Amazon_index","Filename","Image_url","Title","Author","Category_id","Category"]
+df_train.columns=Col_names
+df_test.columns=Col_names
+df_list.columns=Col_names
+
+## Filepath of database Train and test
+train_path = work_dir+'Database_train'
+test_path = work_dir+'Database_test'
+list_path=work_dir+"BigData"
+## Adding filepath column to dataframes
+filepath=list()
+for i in range(len(df_test.Filename)):
+    filepath.append(test_path+"/"+df_test.Category[i]+"/"+df_test.Filename[i])
+df_test["Filepath"]=filepath
+
+filepath=list()
+for i in range(len(df_train.Filename)):
+    filepath.append(train_path+"/"+df_train.Category[i]+"/"+df_train.Filename[i])
+df_train["Filepath"]=filepath
+
+filepath=list()
+for i in range(len(df_list.Filename)):
+    filepath.append(list_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
+df_list["Filepath"]=filepath
+
+## storage of category names
+cat = pd.DataFrame(df_train['Category'].value_counts())
+classe=['Arts & Photography',
+ 'Biographies & Memoirs',
+ 'Business & Money',
+ 'Calendars',
+ "Children's Books",
+ 'Comics & Graphic Novels',
+ 'Computers & Technology',
+ 'Cookbooks, Food & Wine',
+ 'Crafts, Hobbies & Home',
+ 'Christian Books & Bibles',
+ 'Engineering & Transportation',
+ 'Health, Fitness & Dieting',
+ 'History',
+ 'Humor & Entertainment',
+ 'Law',
+ 'Literature & Fiction',
+ 'Medical Books',
+ 'Mystery, Thriller & Suspense',
+ 'Parenting & Relationships',
+ 'Politics & Social Sciences',
+ 'Reference',
+ 'Religion & Spirituality',
+ 'Romance',
+ 'Science & Math',
+ 'Science Fiction & Fantasy',
+ 'Self-Help',
+ 'Sports & Outdoors',
+ 'Teen & Young Adult',
+ 'Test Preparation',
+ 'Travel']
+
+
 
              #######################################################
              #################### FUNCTIONS ########################
@@ -501,15 +585,18 @@ def top_table(pred, ytest, label):
     print(resultats)
     return resultats
 
-def classement_predictions(predictions, classe =classe):
+def classement_predictions(predictions, classe=classe):
     pred = pd.DataFrame(np.transpose(predictions))
     maximum = pred.sort_values(by=0, ascending = False)
     max_3 = maximum.index[0:3]
     classe_3 = []
     for i in max_3:
         classe_3.append(classe[i])
+    label = []
+    for i in maximum.index:
+        label.append(classe[i])
 
-    return classe_3, maximum
+    return classe_3, maximum, label,
 
 def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMining,
             new_inception = new_inception, clf_SVM_new_inception = clf_SVM_new_inception,
@@ -538,93 +625,55 @@ def prediction(img, classe=classe, stopwords=stop_words, clf_Text = clf_TextMini
 
         pred_clf_textmining = clf_Text.predict_proba(text_img_to_pred)
 
-
-
         total_pred = pd.DataFrame(index=['prédiction 1', 'prédiction 2', 'prédiction 3'],
                             columns=['Text', 'inception', 'SVM_inception'])
 
-        total_pred.Text, proba_textmining = classement_predictions(pred_clf_textmining)
-        total_pred.inception, proba_clf_inception = classement_predictions(pred_clf_inception)
-        total_pred.SVM_inception, proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+        total_pred.Text, proba_textmining, label_proba_textmining = classement_predictions(pred_clf_textmining)
+        total_pred.inception, proba_clf_inception, label_proba_clf_inception = classement_predictions(pred_clf_inception)
+        total_pred.SVM_inception, proba_clf_svm_inception, label_proba_clf_svm_inception = classement_predictions(pred_clf_svm_inception)
+        affichage_proba(proba_textmining=proba_textmining, proba_clf_inception=proba_clf_inception,
+                        proba_clf_svm_inception = proba_clf_svm_inception, label_proba_textmining = label_proba_textmining,
+                          label_proba_clf_inception = label_proba_clf_inception, label_proba_clf_svm_inception= label_proba_clf_svm_inception)
     return total_pred
 
+def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_inception,
+                    label_proba_textmining, label_proba_clf_inception, label_proba_clf_svm_inception):
+
+    proba_et_label_text = pd.DataFrame({'proba_Text' : proba_textmining[0],'label_Text' : label_proba_textmining})
+    proba_et_label_inception = pd.DataFrame({'proba_inception' : proba_clf_inception[0],'label_inception' : label_proba_clf_inception})
+    proba_et_label_svm_inception = pd.DataFrame({'proba_SVM_inception' : proba_clf_svm_inception[0],'label_SVM_inception' : label_proba_clf_svm_inception})
+
+    text = ColumnDataSource(proba_et_label_text)
+    inception = ColumnDataSource(proba_et_label_inception)
+    svm_inception = ColumnDataSource(proba_et_label_svm_inception)
+
+    hover_text = HoverTool(tooltips=[("probabilité ", "@proba_Text")])
+    hover_inception = HoverTool(tooltips=[("probabilité ", "@proba_inception")])
+    hover_SVM_inception = HoverTool(tooltips=[("probabilité ", "@proba_SVM_inception")])
+
+    fig1 = figure(plot_width =1000, plot_height=400, x_range = label_proba_textmining)
+    fig1.vbar(x='label_Text', top= 'proba_Text', source = text, width=0.5, fill_color = '#45A7E2', line_color = '#45A7E2')
+    fig1.xaxis.major_label_orientation = 0.7
+    fig1.add_tools(hover_text)
+    tab1 = Panel(child = fig1, title='Text_mining_proba')
+
+    fig2 = figure(plot_width =1000, plot_height=400, x_range = label_proba_clf_inception)
+    fig2.vbar(x='label_inception', top= 'proba_inception', source = inception, width=0.5, fill_color = '#E74C3C', line_color = '#E74C3C')
+    fig2.xaxis.major_label_orientation = 0.7
+    fig2.add_tools(hover_inception)
+    tab2 = Panel(child = fig2, title='Inception_proba')
+
+    fig3 = figure(plot_width =1000, plot_height=400, x_range = label_proba_clf_svm_inception)
+    fig3.vbar(x='label_SVM_inception', top= 'proba_SVM_inception', source = svm_inception, width=0.5, fill_color = '#2ECC71', line_color = '#2ECC71')
+    fig3.xaxis.major_label_orientation = 0.7
+    fig3.add_tools(hover_SVM_inception)
+    tab3 = Panel(child = fig3, title='SVM_inception_proba')
 
 
+    onglet = Tabs(tabs=[tab1,tab2,tab3])
+    show(onglet)
 
 
-
-#######################################################
-####################### VARIABLES #####################
-#######################################################
-
-##  3 data sets were available :
-## - Data set Train ==> 51 300 images
-## - Data set test ==> 5 700 images
-## - Data set Final ==> 207 000 images where we removed the 57 000 images of train and test
-
-
-## Loading of dataframe train and test.
-df_train = pd.read_csv(work_dir+"book30-listing-train.csv",engine = "python", header = None)
-df_test = pd.read_csv(work_dir+"book30-listing-test.csv",engine = "python", header = None)
-df_list = pd.read_csv(work_dir+"book32-listing.csv",engine = "python", header = None)
-
-Col_names=["Amazon_index","Filename","Image_url","Title","Author","Category_id","Category"]
-df_train.columns=Col_names
-df_test.columns=Col_names
-df_list.columns=Col_names
-
-## Filepath of database Train and test
-train_path = work_dir+'Database_train'
-test_path = work_dir+'Database_test'
-list_path=work_dir+"BigData"
-## Adding filepath column to dataframes
-filepath=list()
-for i in range(len(df_test.Filename)):
-    filepath.append(test_path+"/"+df_test.Category[i]+"/"+df_test.Filename[i])
-df_test["Filepath"]=filepath
-
-filepath=list()
-for i in range(len(df_train.Filename)):
-    filepath.append(train_path+"/"+df_train.Category[i]+"/"+df_train.Filename[i])
-df_train["Filepath"]=filepath
-
-filepath=list()
-for i in range(len(df_list.Filename)):
-    filepath.append(list_path+"/"+df_list.Category[i]+"/"+df_list.Filename[i])
-df_list["Filepath"]=filepath
-
-## storage of category names
-cat = pd.DataFrame(df_train['Category'].value_counts())
-classe=['Arts & Photography',
- 'Biographies & Memoirs',
- 'Business & Money',
- 'Calendars',
- "Children's Books",
- 'Comics & Graphic Novels',
- 'Computers & Technology',
- 'Cookbooks, Food & Wine',
- 'Crafts, Hobbies & Home',
- 'Christian Books & Bibles',
- 'Engineering & Transportation',
- 'Health, Fitness & Dieting',
- 'History',
- 'Humor & Entertainment',
- 'Law',
- 'Literature & Fiction',
- 'Medical Books',
- 'Mystery, Thriller & Suspense',
- 'Parenting & Relationships',
- 'Politics & Social Sciences',
- 'Reference',
- 'Religion & Spirituality',
- 'Romance',
- 'Science & Math',
- 'Science Fiction & Fantasy',
- 'Self-Help',
- 'Sports & Outdoors',
- 'Teen & Young Adult',
- 'Test Preparation',
- 'Travel']
 
              #######################################################
              ################### MAIN CODE #########################
@@ -645,7 +694,6 @@ if os.path.isfile(work_dir + 'new_inception.json') == True and \
 else:
     print("New_inception model can not be loaded, please check the file name or the filepath")
 
-## Import de mon modèle de Deep learning ##
 
 if os.path.isfile(work_dir + 'SVM_new_inception') == True and \
    os.path.isfile(work_dir + 'pca_pre_SVM') == True:
