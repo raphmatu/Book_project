@@ -624,7 +624,7 @@ if os.path.isfile(work_dir + 'clf_textmining') == True and \
 else:
     print("Text Mining model can not be loaded, please check the file name or the filepath")
 
-Choice_matrix=pd.read_csv("Desktop/Books/Choice_matrix.csv", sep=";",index_col=0)
+Choice_matrix=pd.read_csv(work_dir + "Choice_matrix.csv", sep=";",index_col=0)
 ## Here we present our results after each training model. We present top1, top3
 ## and top5 results.
 
@@ -720,5 +720,4 @@ def best_pred(img,choice_matrix=Choice_matrix, classe=classe, stopwords=stop_wor
 
 
 
-
-    fin
+## end
