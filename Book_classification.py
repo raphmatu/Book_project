@@ -70,7 +70,7 @@ from bokeh.models.tools import HoverTool
 from bokeh.models import ColumnDataSource
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.io import push_notebook,output_notebook, show
-#output_notebook()
+output_notebook()
 
 from sklearn.externals import joblib
 from joblib import load, dump
@@ -727,26 +727,23 @@ def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_incepti
              ################### MAIN CODE #########################
              #######################################################
 
-             #######################################################
-             #################### MAIN CODE ########################
-             #######################################################
 
-
-
-
-## Here we present our results after each training model. We present top1, top3
-## and top5 results.
-
-
-
-
-
-
-
-
-
-
-print ('If you want to test the classifier, please enter image filepath to function prediction() ')
+print('******************************************************************')
+print('******************************************************************')
+print('***************** Welcome in a Book Classifier *******************')
+print('********* You can upload a book cover in the function ************')
+print('************************ Prediction() ****************************')
+print('******************************************************************')
+print('************ if you want to see our statistics on ****************')
+print('******************************************************************')
+print('***************** -- Inception CNN model *************************')
+print('**************************** or **********************************')
+print('******************* -- Text Mining model *************************')
+print('******************************************************************')
+print('************ use see_statistics() without any arguments **********')
+print('******************************************************************')
+print('************************** Enjoy ! *******************************')
+print('******************************************************************')
 
 
 
