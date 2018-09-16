@@ -56,8 +56,9 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from time import time
-from sklearn.svm import SVC
+from joblib import load, dump
 import matplotlib.pylab as plt
+from IPython.display import clear_output
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -72,8 +73,8 @@ from bokeh.models.widgets import Panel, Tabs
 from bokeh.io import push_notebook,output_notebook, show
 output_notebook()
 
+from sklearn.svm import SVC
 from sklearn.externals import joblib
-from joblib import load, dump
 from sklearn.decomposition import PCA
 from sklearn.ensemble import VotingClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -727,7 +728,7 @@ def affichage_proba(proba_textmining, proba_clf_inception, proba_clf_svm_incepti
              ################### MAIN CODE #########################
              #######################################################
 
-
+clear_output()
 print('******************************************************************')
 print('******************************************************************')
 print('***************** Welcome in a Book Classifier *******************')
