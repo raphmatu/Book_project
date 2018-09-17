@@ -40,8 +40,8 @@
 ##
 ## You have to put all of them in one folder :
 
-work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\final2\\'
-#work_dir='Desktop/Books/'
+#work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\final2\\'
+work_dir='Desktop/Books/'
 
 
             #######################################################
@@ -839,7 +839,7 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
             else:
                 Top2f=classe[pred.SVM_inception[0]]
             Top2Text=classe[pred.Text[1]]
-            Top2SVM=[pred.SVM_inception[1]]
+            Top2SVM=classe[pred.SVM_inception[1]]
             # Si la prediction n°2 du clf texte ne correspond ni au top1 ou au top2
             if(Top2Text!=Top1f and Top2Text!=Top2f):
                 # Et que la prédiction n°2 du classifieur svm non plus
@@ -926,7 +926,7 @@ def best_pred(img,choice_matrix=Choice_matrix,choice_matrix_img=Choice_matrix_im
 
 def see_statistics():
     resultats = pd.read_csv(work_dir + "resultats_finaux.csv", sep=';')
-
+    resultats.columns=["category",'Inception', 'SVM', 'Text']
     category = resultats.category
 
     source = ColumnDataSource(resultats)
