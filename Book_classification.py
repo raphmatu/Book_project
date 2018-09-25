@@ -40,7 +40,6 @@
 ##
 ## You have to put all of them in one folder :
 
-#work_dir='D:\\Boulot_Raph\\2018_06_Formation DATA Scientist\\projets\\books\\final2\\'
 work_dir='Desktop/Books/'
 
 
