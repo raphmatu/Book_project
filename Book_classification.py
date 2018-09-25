@@ -10,33 +10,42 @@
 ##                     train and test
 
 ## We trained our models on train and used test to validate it.
-## You can simply run the program. It will provide our results on Final Data set
+## You can simply run the program. It will provide our results on Test Data set
 ## and give you the possibility to upload your own image to test it.
 
-## We used inceptionV3 CNN and Text mining to classify covers.
+## We used 3 models to classify covers :
+##      --> 2 from inceptionV3 CNN model
+##      --> 1 Text mining model
 
+## INCEPTION
 ## Inception network is very powerful, we changed the last layer and replace it
 ## with 3 layers (Two dense layers and one Dropout). We tried many modifications
 ## but it appears that overfitting was very difficult to limit due to the high
 ## covers variablity. We choose to re-train the last 100 layers of the new
 ## inception model. The others were pre-trained with imageNet data.
+## After training, we also used inception in a different way. We choose to
+## extract features from the last GlobalAveragePooling2D layer. These 2048
+## features were reducted to 229 (keeping 90% of variablity) thanks to PCA.
+## Finally, we used SVM to elaborate a new classification model.
 
-## ## Text mining's goal is to extract text from each image of the datasets,
+##      --> Inception (classical re-trained inception with our added layers)
+##      --> SVM_inception (Extracted features from our retrained inception model)
+
+## TEXT MINING
+## Text mining's goal is to extract text from each image of the datasets,
 ## and then classify covers with the extracted text.
 ## Once the text extracted, we do some transformation on it.
 ## We retrieve the words from text which do not contain information (with stop_words)
 ## and then we use only the stemming part of each word left (with EnglishStemmer).
 ## And once our text transformation done, we use a MultinomialNB classifier for the prediction.
 
+##      --> TextMining model
 
 
 
 ## IMPORTANT : to run properly the program, you have to download :
 ##
-##              - all the pre-trained models
-##              - the 2 csv files train and test
-##              - image data base (if you want to re-train models)
-##              - Final corpus file
+##              - all the files contained in pre_trained_model folder
 ##
 ## You have to put all of them in one folder :
 
